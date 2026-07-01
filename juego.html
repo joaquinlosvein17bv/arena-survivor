@@ -112,6 +112,81 @@ canvas {
 #levelUp .opt:hover { background: rgba(255,200,0,0.15); border-color: #ffcc00; transform: scale(1.05); }
 #levelUp .opt h3 { font-size: min(18px,3vw); color: #ffcc00; }
 #levelUp .opt p { font-size: min(13px,2vw); opacity: 0.7; margin-top: 5px; }
+
+/* ── Touch Controls (tablet) ───────────────────────────────── */
+#touchControls {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  touch-action: none;
+}
+#joystick-area {
+  position: absolute;
+  bottom: clamp(20px,5vh,40px);
+  right: clamp(20px,5vw,40px);
+  width: min(140px,22vmin);
+  height: min(140px,22vmin);
+  pointer-events: auto;
+  touch-action: none;
+}
+#joystick-base {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+  border: 2px solid rgba(255,255,255,0.15);
+  position: relative;
+  box-shadow: 0 0 30px rgba(0,150,255,0.08), inset 0 0 20px rgba(0,0,0,0.3);
+}
+#joystick-thumb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(52px,9vmin);
+  height: min(52px,9vmin);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #0096ff, #0066cc);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 20px rgba(0,150,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.3);
+  transition: none;
+  will-change: transform;
+}
+#sprintBtn {
+  position: absolute;
+  bottom: clamp(20px,5vh,40px);
+  left: clamp(20px,5vw,40px);
+  width: min(80px,14vmin);
+  height: min(80px,14vmin);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, rgba(255,120,0,0.55), rgba(200,60,0,0.4));
+  border: 2px solid rgba(255,120,0,0.6);
+  color: #fff;
+  font-size: clamp(11px,2.2vmin,15px);
+  font-weight: 700;
+  pointer-events: auto;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 0 12px rgba(255,100,0,0.5);
+  letter-spacing: 1px;
+  box-shadow: 0 0 20px rgba(255,100,0,0.15), inset 0 -2px 6px rgba(0,0,0,0.3);
+  transition: background 0.1s, transform 0.1s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#sprintBtn:active,
+#sprintBtn.active {
+  background: radial-gradient(circle at 40% 40%, rgba(255,120,0,0.85), rgba(200,60,0,0.7));
+  transform: scale(0.92);
+  box-shadow: 0 0 35px rgba(255,100,0,0.4);
+}
+#sprintBtn .icon {
+  font-size: clamp(16px,3.5vmin,24px);
+  margin-right: 3px;
+}
 </style>
 </head>
 <body>
@@ -129,7 +204,8 @@ canvas {
 <div id="startScreen">
   <h1>⚔ ARENA SURVIVOR</h1>
   <p>Sobrevive oleadas de enemigos en la arena</p>
-  <p>WASD o flechas para moverte · SHIFT para sprint</p>
+  <p class="controls-desktop">WASD o flechas para moverte · SHIFT para sprint</p>
+  <p class="controls-touch" style="display:none">Joystick para moverte · Botón CORRER para sprint</p>
   <p>Atacas automáticamente · Recoge orbes de XP</p>
   <div class="flash">[ HAZ CLIC PARA EMPEZAR ]</div>
 </div>
@@ -148,6 +224,14 @@ canvas {
 </div>
 
 <canvas id="game"></canvas>
+
+<!-- ── Touch controls (tablet) ── -->
+<div id="touchControls">
+  <div id="sprintBtn"><span class="icon">⚡</span> CORRER</div>
+  <div id="joystick-area">
+    <div id="joystick-base"><div id="joystick-thumb"></div></div>
+  </div>
+</div>
 
 <script>
 const canvas = document.getElementById('game');
@@ -180,6 +264,10 @@ let score = 0;
 let player, enemies, projectiles, particles, xpOrbs;
 let spawnTimer, spawnInterval, wave = 1;
 let animId;
+
+// ── Touch input state ──
+const touchInput = { dx: 0, dy: 0, sprint: false, active: false, joystickTouchId: null };
+let touchControlsVisible = false;
 
 function init() {
   resize();
@@ -356,8 +444,21 @@ function update() {
   if (keys['d'] || keys['arrowright']) dx = 1;
   if (dx && dy) { dx *= 0.707; dy *= 0.707; }
 
+  // ── Merge touch input (tablet) ──
+  if (touchInput.active) {
+    const mag = Math.sqrt(dx * dx + dy * dy);
+    const touchMag = Math.sqrt(touchInput.dx * touchInput.dx + touchInput.dy * touchInput.dy);
+    if (mag === 0) {
+      dx = touchInput.dx;
+      dy = touchInput.dy;
+    } else if (touchMag > 0) {
+      dx = (dx + touchInput.dx) / 2;
+      dy = (dy + touchInput.dy) / 2;
+    }
+  }
+
   let spd = player.speed + player.speedBonus;
-  const isSprinting = keys['shift'] && player.stamina > 0 && (dx !== 0 || dy !== 0);
+  const isSprinting = (keys['shift'] || touchInput.sprint) && player.stamina > 0 && (dx !== 0 || dy !== 0);
 
   if (isSprinting) {
     spd *= player.sprintMult;
@@ -877,6 +978,9 @@ function gameOver() {
   const s = secs % 60;
   document.getElementById('finalTime').textContent = `${m}:${s.toString().padStart(2, '0')}`;
   document.getElementById('gameOver').style.display = 'block';
+  if (touchControlsVisible) hideTouchControls();
+  resetJoystick();
+  touchInput.sprint = false;
   cancelAnimationFrame(animId);
 }
 
@@ -886,6 +990,15 @@ function loop() {
   animId = requestAnimationFrame(loop);
 }
 
+function showTouchControls() {
+  document.getElementById('touchControls').style.display = 'block';
+  touchControlsVisible = true;
+}
+function hideTouchControls() {
+  document.getElementById('touchControls').style.display = 'none';
+  touchControlsVisible = false;
+}
+
 function startGame() {
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('gameOver').style.display = 'none';
@@ -893,6 +1006,7 @@ function startGame() {
   init();
   gameRunning = true;
   gamePaused = false;
+  if (isTouchDevice) showTouchControls();
   if (animId) cancelAnimationFrame(animId);
   loop();
 }
@@ -915,6 +1029,118 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
     return this;
   };
 }
+
+// ────────────────────────────────────────────────────────────
+//  Touch Controls — Joystick + Sprint Button (tablet/mobile)
+// ────────────────────────────────────────────────────────────
+
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const JOYSTICK_DEAD_ZONE = 8; // px threshold to prevent drift
+
+// Show touch-specific instructions on touch devices
+if (isTouchDevice) {
+  document.querySelector('.controls-desktop').style.display = 'none';
+  document.querySelector('.controls-touch').style.display = '';
+}
+
+// --- Joystick ---
+const jArea = document.getElementById('joystick-area');
+const jThumb = document.getElementById('joystick-thumb');
+const jBase = document.getElementById('joystick-base');
+
+function getJoystickCenter() {
+  const r = jBase.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+function updateJoystick(clientX, clientY) {
+  const c = getJoystickCenter();
+  let dx = clientX - c.x;
+  let dy = clientY - c.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const maxDist = jBase.offsetWidth / 2 - jThumb.offsetWidth / 2;
+
+  let clampedX = dx, clampedY = dy;
+  if (dist > maxDist) {
+    clampedX = (dx / dist) * maxDist;
+    clampedY = (dy / dist) * maxDist;
+  }
+
+  jThumb.style.transform = `translate(calc(-50% + ${clampedX}px), calc(-50% + ${clampedY}px))`;
+
+  if (dist < JOYSTICK_DEAD_ZONE) {
+    touchInput.dx = 0;
+    touchInput.dy = 0;
+    touchInput.active = false;
+  } else {
+    const norm = maxDist || 1;
+    touchInput.dx = clampedX / norm;
+    touchInput.dy = clampedY / norm;
+    touchInput.active = true;
+  }
+}
+
+function resetJoystick() {
+  jThumb.style.transform = 'translate(-50%, -50%)';
+  touchInput.dx = 0;
+  touchInput.dy = 0;
+  touchInput.active = false;
+}
+
+jArea.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  touchInput.joystickTouchId = t.identifier;
+  updateJoystick(t.clientX, t.clientY);
+}, { passive: false });
+
+jArea.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchInput.joystickTouchId) {
+      updateJoystick(t.clientX, t.clientY);
+    }
+  }
+}, { passive: false });
+
+jArea.addEventListener('touchend', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === touchInput.joystickTouchId) {
+      touchInput.joystickTouchId = null;
+      resetJoystick();
+    }
+  }
+}, { passive: false });
+
+jArea.addEventListener('touchcancel', () => {
+  touchInput.joystickTouchId = null;
+  resetJoystick();
+});
+
+// --- Sprint button ---
+const sBtn = document.getElementById('sprintBtn');
+
+sBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  touchInput.sprint = true;
+  sBtn.classList.add('active');
+}, { passive: false });
+
+sBtn.addEventListener('touchend', e => {
+  e.preventDefault();
+  touchInput.sprint = false;
+  sBtn.classList.remove('active');
+}, { passive: false });
+
+sBtn.addEventListener('touchcancel', () => {
+  touchInput.sprint = false;
+  sBtn.classList.remove('active');
+});
+
+// Prevent browser gestures on canvas
+canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
 </script>
 </body>
 </html>
