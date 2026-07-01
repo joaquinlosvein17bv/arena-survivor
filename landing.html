@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova — Build Products That Your Users Will Love</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ─── Reset ─── */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #F8FAFC;
+      color: #0F172A;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* ─── Container ─── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .container--narrow {
+      max-width: 700px;
+    }
+
+    /* ─── Navbar ─── */
+    .navbar {
+      background: #FFFFFF;
+      border-bottom: 1px solid #F1F5F9;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .navbar__inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+    }
+
+    .navbar__logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #2563EB;
+    }
+
+    .navbar__links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .navbar__link {
+      font-size: 15px;
+      font-weight: 500;
+      color: #475569;
+      transition: color 0.2s;
+    }
+
+    .navbar__link:hover {
+      color: #0F172A;
+    }
+
+    .navbar__link--active {
+      color: #0F172A;
+    }
+
+    .navbar__cta {
+      display: inline-flex;
+      align-items: center;
+      padding: 10px 24px;
+      background: #2563EB;
+      color: #FFFFFF;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+
+    .navbar__cta:hover {
+      background: #1D4ED8;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      background: #FFFFFF;
+      padding: 100px 0;
+    }
+
+    .hero__content {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      text-align: center;
+    }
+
+    .hero__badge {
+      display: inline-flex;
+      padding: 6px 16px;
+      background: #EFF6FF;
+      color: #2563EB;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 999px;
+    }
+
+    .hero__title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 52px;
+      font-weight: 700;
+      color: #0F172A;
+      line-height: 1.1;
+      letter-spacing: -1px;
+      max-width: 800px;
+    }
+
+    .hero__subtitle {
+      font-size: 18px;
+      font-weight: 400;
+      color: #475569;
+      line-height: 1.6;
+      max-width: 600px;
+    }
+
+    .hero__actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-top: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn--primary {
+      background: #2563EB;
+      color: #FFFFFF;
+    }
+
+    .btn--primary:hover {
+      background: #1D4ED8;
+    }
+
+    .btn--secondary {
+      background: #F1F5F9;
+      color: #0F172A;
+    }
+
+    .btn--secondary:hover {
+      background: #E2E8F0;
+    }
+
+    /* ─── Features ─── */
+    .features {
+      padding: 100px 0;
+    }
+
+    .features__header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 52px;
+    }
+
+    .features__tag {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2563EB;
+    }
+
+    .features__title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+
+    .features__desc {
+      font-size: 17px;
+      font-weight: 400;
+      color: #475569;
+      line-height: 1.6;
+      max-width: 550px;
+    }
+
+    .features__grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+    }
+
+    .feature-card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .feature-card__icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .feature-card__icon--blue { background: #EFF6FF; }
+    .feature-card__icon--green { background: #F0FDF4; }
+    .feature-card__icon--red { background: #FEF2F2; }
+
+    .feature-card__icon svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .feature-card__title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: #0F172A;
+    }
+
+    .feature-card__desc {
+      font-size: 15px;
+      font-weight: 400;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    /* ─── CTA Section ─── */
+    .cta {
+      background: #2563EB;
+      padding: 96px 0;
+    }
+
+    .cta__inner {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      text-align: center;
+    }
+
+    .cta__title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 36px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .cta__desc {
+      font-size: 17px;
+      font-weight: 400;
+      color: #BFDBFE;
+      line-height: 1.6;
+    }
+
+    .btn--white {
+      background: #FFFFFF;
+      color: #2563EB;
+    }
+
+    .btn--white:hover {
+      background: #F1F5F9;
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      background: #0F172A;
+      padding: 80px 0 0;
+    }
+
+    .footer__grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr;
+      gap: 80px;
+    }
+
+    .footer__col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .footer__logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .footer__tagline {
+      font-size: 14px;
+      font-weight: 400;
+      color: #94A3B8;
+    }
+
+    .footer__col-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #FFFFFF;
+    }
+
+    .footer__link {
+      font-size: 14px;
+      font-weight: 400;
+      color: #94A3B8;
+      transition: color 0.2s;
+    }
+
+    .footer__link:hover {
+      color: #FFFFFF;
+    }
+
+    .footer__divider {
+      margin-top: 40px;
+      height: 1px;
+      background: #1E293B;
+      border: none;
+    }
+
+    .footer__copyright {
+      padding: 24px 0;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 400;
+      color: #64748B;
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 900px) {
+      .features__grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .footer__grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px;
+      }
+
+      .hero__title {
+        font-size: 40px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .navbar__links {
+        display: none;
+      }
+
+      .features__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer__grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .hero__title {
+        font-size: 32px;
+      }
+
+      .hero {
+        padding: 60px 0;
+      }
+
+      .features {
+        padding: 60px 0;
+      }
+
+      .cta {
+        padding: 60px 0;
+      }
+
+      .features__title {
+        font-size: 28px;
+      }
+
+      .cta__title {
+        font-size: 28px;
+      }
+
+      .hero__subtitle {
+        font-size: 16px;
+      }
+
+      .navbar__inner {
+        height: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Navbar ─── -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="navbar__inner">
+        <a href="#" class="navbar__logo">Nova</a>
+        <div class="navbar__links">
+          <a href="#" class="navbar__link navbar__link--active">Home</a>
+          <a href="#" class="navbar__link">Features</a>
+          <a href="#" class="navbar__link">Pricing</a>
+          <a href="#" class="navbar__link">Contact</a>
+        </div>
+        <a href="#" class="navbar__cta">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ─── Hero ─── -->
+  <section class="hero">
+    <div class="hero__content">
+      <span class="hero__badge">Now in Public Beta</span>
+      <h1 class="hero__title">Build Products That Your Users Will Love</h1>
+      <p class="hero__subtitle">Nova helps teams design, prototype, and ship faster with AI-powered workflows. No complexity, just results.</p>
+      <div class="hero__actions">
+        <a href="#" class="btn btn--primary">Start Free Trial</a>
+        <a href="#" class="btn btn--secondary">Watch Demo</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── Features ─── -->
+  <section class="features">
+    <div class="container">
+      <div class="features__header">
+        <span class="features__tag">Everything you need</span>
+        <h2 class="features__title">Powerful features for modern teams</h2>
+        <p class="features__desc">Everything you need to build and scale your product, all in one place.</p>
+      </div>
+      <div class="features__grid">
+
+        <div class="feature-card">
+          <div class="feature-card__icon feature-card__icon--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            </svg>
+          </div>
+          <h3 class="feature-card__title">Lightning Fast</h3>
+          <p class="feature-card__desc">Ship features 10x faster with AI-powered code generation and instant previews.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-card__icon feature-card__icon--green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </div>
+          <h3 class="feature-card__title">Enterprise Security</h3>
+          <p class="feature-card__desc">SOC 2 compliant with end-to-end encryption, audit logs, and role-based access.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-card__icon feature-card__icon--red">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </div>
+          <h3 class="feature-card__title">Team Collaboration</h3>
+          <p class="feature-card__desc">Real-time collaboration with comments, version history, and shared workspaces.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CTA ─── -->
+  <section class="cta">
+    <div class="cta__inner">
+      <h2 class="cta__title">Ready to get started?</h2>
+      <p class="cta__desc">Join thousands of teams already building with Nova. Free for 14 days, no credit card required.</p>
+      <a href="#" class="btn btn--white">Start Free Trial</a>
+    </div>
+  </section>
+
+  <!-- ─── Footer ─── -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__grid">
+        <div class="footer__col">
+          <span class="footer__logo">Nova</span>
+          <p class="footer__tagline">Build faster. Ship smarter.</p>
+        </div>
+        <div class="footer__col">
+          <span class="footer__col-title">Product</span>
+          <a href="#" class="footer__link">Features</a>
+          <a href="#" class="footer__link">Pricing</a>
+          <a href="#" class="footer__link">Changelog</a>
+        </div>
+        <div class="footer__col">
+          <span class="footer__col-title">Company</span>
+          <a href="#" class="footer__link">About</a>
+          <a href="#" class="footer__link">Blog</a>
+          <a href="#" class="footer__link">Careers</a>
+        </div>
+        <div class="footer__col">
+          <span class="footer__col-title">Legal</span>
+          <a href="#" class="footer__link">Privacy</a>
+          <a href="#" class="footer__link">Terms</a>
+          <a href="#" class="footer__link">Cookies</a>
+        </div>
+      </div>
+      <hr class="footer__divider">
+      <p class="footer__copyright">&copy; 2026 Nova. All rights reserved.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

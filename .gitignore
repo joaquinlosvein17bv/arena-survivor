@@ -1,0 +1,51 @@
+# ──────────────────────────────────────────────
+#  .gitignore — Arena Survivor + Nova
+#  Excluye archivos generados, del SO, y del
+#  entorno de desarrollo que no aportan al repo.
+# ──────────────────────────────────────────────
+
+# ── Entorno & secrets ─────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Dependencias (si en el futuro agregás npm) ─
+node_modules/
+.pnp/
+.pnp.js
+
+# ── Build / output ────────────────────────────
+dist/
+build/
+out/
+*.bundle.js
+*.min.js
+*.map
+
+# ── Editor / IDE ──────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+*.~
+
+# ── OS ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.lnk
+
+# ── Logs / temp ───────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+tmp/
+temp/
+
+# ── Git itself ────────────────────────────────
+# No subir historial anidado accidentalmente
+.git/
