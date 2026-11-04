@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Gran Premio · Carrera 3D con poderes</title>
 <style>
   :root {
@@ -175,6 +175,53 @@
     #hint { display: none; }
     .speed-panel .big { font-size: 26px; }
   }
+  /* ---------- Controles táctiles (móvil) ---------- */
+  #touchPad {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    pointer-events: none;
+    touch-action: none;
+  }
+  #touchPad.on { display: block; }
+  #touchPad .tbtn {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 0;
+    background: rgba(13, 20, 36, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-family: inherit;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.08s ease, transform 0.08s ease;
+  }
+  #touchPad .tbtn.active {
+    background: rgba(255, 138, 60, 0.8);
+    transform: scale(0.94);
+  }
+  #tLeft  { left: 18px;  bottom: 128px; width: 76px; height: 76px; }
+  #tRight { left: 104px; bottom: 128px; width: 76px; height: 76px; }
+  #tBrake { right: 118px; bottom: 128px; width: 76px; height: 76px; font-size: 14px; }
+  #tGas   { right: 18px;  bottom: 128px; width: 92px; height: 92px; font-size: 16px; }
+  #tItem  {
+    right: 18px; bottom: 232px; width: 68px; height: 68px; font-size: 26px;
+    background: rgba(255, 204, 46, 0.3);
+    border-color: rgba(255, 204, 46, 0.85);
+  }
+  #tItem.active { background: rgba(255, 204, 46, 0.9); }
 </style>
 </head>
 <body>
@@ -236,6 +283,14 @@
     <h2>No se puede mostrar el circuito 3D</h2>
     <p>Tu navegador no tiene WebGL disponible o está desactivado. Prueba con otro navegador para jugar.</p>
   </div>
+</div>
+
+<div id="touchPad">
+  <button class="tbtn" id="tLeft" type="button" aria-label="Girar a la izquierda">&#9664;</button>
+  <button class="tbtn" id="tRight" type="button" aria-label="Girar a la derecha">&#9654;</button>
+  <button class="tbtn" id="tBrake" type="button" aria-label="Frenar">FRENO</button>
+  <button class="tbtn" id="tGas" type="button" aria-label="Acelerar">GAS</button>
+  <button class="tbtn" id="tItem" type="button" aria-label="Usar poder">&#127820;</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
@@ -1007,6 +1062,57 @@
   document.getElementById('againBtn').addEventListener('click', function () {
     location.reload();
   });
+
+  /* =========================================================
+     CONTROLES TÁCTILES (móvil)
+     Mapean a las mismas teclas que el teclado: up/down/left/right
+     ========================================================= */
+  var isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+  if (isTouchDevice) {
+    var touchPad = document.getElementById('touchPad');
+    if (touchPad) {
+      touchPad.classList.add('on');
+
+      var hintEl = document.getElementById('hint');
+      if (hintEl) hintEl.textContent = '◀ ▶ girar · GAS / FRENO · 🍌 usa el poder';
+
+      var bindHold = function (el, onDown, onUp) {
+        if (!el) return;
+        el.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          el.classList.add('active');
+          onDown();
+        });
+        var release = function () {
+          el.classList.remove('active');
+          onUp();
+        };
+        el.addEventListener('pointerup', release);
+        el.addEventListener('pointercancel', release);
+        el.addEventListener('pointerleave', release);
+      };
+
+      bindHold(document.getElementById('tGas'), function () { keys.up = true; }, function () { keys.up = false; });
+      bindHold(document.getElementById('tBrake'), function () { keys.down = true; }, function () { keys.down = false; });
+      bindHold(document.getElementById('tLeft'), function () { keys.left = true; }, function () { keys.left = false; });
+      bindHold(document.getElementById('tRight'), function () { keys.right = true; }, function () { keys.right = false; });
+
+      var itemBtn = document.getElementById('tItem');
+      if (itemBtn) {
+        itemBtn.addEventListener('pointerdown', function (e) {
+          e.preventDefault();
+          itemBtn.classList.add('active');
+          if (raceState === 'racing' && !player.finished) useItem(player);
+        });
+        var itemUp = function () { itemBtn.classList.remove('active'); };
+        itemBtn.addEventListener('pointerup', itemUp);
+        itemBtn.addEventListener('pointercancel', itemUp);
+        itemBtn.addEventListener('pointerleave', itemUp);
+      }
+    }
+  }
 
   /* =========================================================
      LÓGICA DE KARTS
