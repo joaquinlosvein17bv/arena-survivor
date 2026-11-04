@@ -1,0 +1,2029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Minion Run &mdash; Banana Escape</title>
+<link rel="icon" href="data:," />
+<style>
+  :root{
+    --yellow:#ffd93b;
+    --yellow-deep:#ffc400;
+    --blue:#2f6bd8;
+    --danger:#ff453a;
+    --ink:#0a1016;
+  }
+  *{ box-sizing:border-box; }
+  html,body{
+    margin:0; height:100%; overflow:hidden; background:#0a1016;
+    font-family:"Segoe UI",system-ui,-apple-system,"Trebuchet MS",sans-serif;
+    color:#fff; user-select:none; -webkit-user-select:none;
+  }
+  #game{ display:block; width:100%; height:100%; outline:none; touch-action:none; }
+
+  .vignette{
+    position:fixed; inset:0; pointer-events:none; z-index:2;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 46%, rgba(0,0,0,.38) 100%);
+  }
+  #damage{
+    position:fixed; inset:0; pointer-events:none; z-index:6; opacity:0;
+    background:radial-gradient(circle at center, rgba(255,40,40,0) 30%, rgba(255,30,30,.55) 100%);
+    transition:opacity .16s ease;
+  }
+  #damage.on{ opacity:1; }
+
+  /* ---------------- HUD ---------------- */
+  #hud{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    opacity:0; transition:opacity .35s ease;
+  }
+  #hud.on{ opacity:1; }
+
+  .hud-top{
+    position:absolute; top:18px; left:18px; right:18px;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  }
+  .chips{ display:flex; gap:10px; align-items:center; }
+  .chip{
+    display:flex; align-items:center; gap:10px;
+    background:rgba(10,16,22,.55); backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.14); border-radius:999px;
+    padding:8px 16px; font-weight:800; font-size:22px;
+    font-variant-numeric:tabular-nums;
+    box-shadow:0 10px 26px rgba(0,0,0,.28);
+  }
+  .chip .emoji{ font-size:20px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+  .chip.small{ font-size:15px; letter-spacing:1px; padding:9px 15px; }
+
+  .timer{
+    position:absolute; left:50%; top:2px; transform:translateX(-50%);
+    background:rgba(10,16,22,.5); border:1px solid rgba(255,255,255,.12);
+    border-radius:999px; padding:8px 20px; font-weight:800; font-size:17px;
+    letter-spacing:1.5px; color:rgba(255,255,255,.9); font-variant-numeric:tabular-nums;
+    backdrop-filter:blur(10px);
+  }
+
+  #radar{
+    width:160px; height:160px; border-radius:50%;
+    box-shadow:0 14px 34px rgba(0,0,0,.4), inset 0 0 30px rgba(0,0,0,.45);
+    background:rgba(8,14,20,.35);
+    margin-top:64px;
+  }
+
+  .meters{
+    position:absolute; left:18px; bottom:58px; width:190px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .meter{ display:flex; flex-direction:column; gap:4px; }
+  .meter span{
+    font-size:10px; font-weight:800; letter-spacing:2.4px;
+    color:rgba(255,255,255,.65); text-shadow:0 1px 3px rgba(0,0,0,.6);
+  }
+  .track{
+    height:9px; border-radius:999px; background:rgba(0,0,0,.45);
+    border:1px solid rgba(255,255,255,.13); overflow:hidden;
+  }
+  .fill{ display:block; height:100%; width:100%; border-radius:999px; }
+  .fill.stamina{ background:linear-gradient(90deg,#2ea043,#7ee787); transition:width .08s linear; }
+  .fill.danger{ background:linear-gradient(90deg,#ffd60a,#ff453a); width:0%; transition:width .08s linear; }
+
+  .hint{
+    position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+    font-size:11px; letter-spacing:1.4px; font-weight:700; white-space:nowrap;
+    color:rgba(255,255,255,.5); text-shadow:0 1px 4px rgba(0,0,0,.7);
+  }
+
+  .warn{
+    position:absolute; left:50%; top:21%; transform:translate(-50%,-50%);
+    font-size:clamp(17px,3vw,30px); font-weight:900; letter-spacing:2px;
+    color:#ff6b5e; white-space:nowrap; opacity:0; transition:opacity .2s;
+    text-shadow:0 0 26px rgba(255,69,58,.75), 0 2px 10px rgba(0,0,0,.9);
+  }
+  .warn.show{ opacity:1; animation:warnPulse .6s infinite alternate; }
+  @keyframes warnPulse{ from{ transform:translate(-50%,-50%) scale(1); } to{ transform:translate(-50%,-50%) scale(1.06); } }
+
+  .toast{
+    position:absolute; left:50%; top:33%; transform:translate(-50%,-50%) scale(.92);
+    font-size:clamp(18px,3vw,32px); font-weight:900; letter-spacing:1px;
+    color:var(--yellow); white-space:nowrap; opacity:0;
+    transition:opacity .22s ease, transform .22s ease;
+    text-shadow:0 3px 16px rgba(0,0,0,.85), 0 0 30px rgba(255,217,59,.35);
+  }
+  .toast.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+
+  /* ---------------- Screens ---------------- */
+  .screen{
+    position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
+    padding:22px;
+    background:radial-gradient(circle at 50% 28%, rgba(22,64,112,.72), rgba(3,7,11,.94));
+    backdrop-filter:blur(9px);
+  }
+  .screen.hidden{ display:none; }
+  .panel{
+    width:min(680px,100%); text-align:center;
+    background:linear-gradient(180deg, rgba(22,32,44,.94), rgba(9,14,21,.96));
+    border:1px solid rgba(255,255,255,.12); border-radius:28px;
+    padding:34px 30px 28px;
+    box-shadow:0 34px 90px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .badge{
+    display:inline-block; font-size:10px; font-weight:900; letter-spacing:3px;
+    color:var(--ink); background:var(--yellow); padding:6px 14px; border-radius:999px;
+    box-shadow:0 6px 20px rgba(255,196,0,.3);
+  }
+  .badge.red{ background:var(--danger); color:#fff; box-shadow:0 6px 20px rgba(255,69,58,.35); }
+  h1{
+    margin:12px 0 10px; font-size:clamp(46px,9vw,86px); line-height:.84;
+    font-weight:900; letter-spacing:-2.5px; text-shadow:0 10px 34px rgba(0,0,0,.55);
+  }
+  h1 span{
+    color:var(--yellow);
+    text-shadow:0 0 46px rgba(255,217,59,.55), 0 6px 0 rgba(150,105,0,.35);
+  }
+  h2{ margin:8px 0 10px; font-size:clamp(26px,5vw,40px); font-weight:900; letter-spacing:-1px; }
+  .lead{ margin:0 auto 18px; max-width:44ch; font-size:15px; line-height:1.55; color:rgba(255,255,255,.72); }
+  .lead b{ color:var(--yellow); }
+
+  .keys{
+    display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 20px;
+    max-width:450px; margin:16px auto 22px; text-align:left;
+  }
+  .keys div{ display:flex; align-items:center; gap:10px; font-size:13px; color:rgba(255,255,255,.78); }
+  kbd{
+    font-family:inherit; font-size:11px; font-weight:800; color:#fff;
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2);
+    border-bottom-width:3px; border-radius:7px; padding:4px 8px; min-width:30px; text-align:center;
+  }
+
+  .btn{
+    pointer-events:auto; cursor:pointer; font-family:inherit;
+    border:0; border-radius:999px; padding:15px 46px;
+    font-size:17px; font-weight:900; letter-spacing:1.5px; color:#141414;
+    background:linear-gradient(180deg,#ffe873,#ffc400);
+    box-shadow:0 12px 32px rgba(255,196,0,.32), inset 0 -3px 0 rgba(0,0,0,.16);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 16px 38px rgba(255,196,0,.42), inset 0 -3px 0 rgba(0,0,0,.16); }
+  .btn:active{ transform:translateY(1px); }
+  .btn.ghost{
+    margin-left:10px; padding:15px 30px; color:#fff; background:transparent;
+    border:1px solid rgba(255,255,255,.24); box-shadow:none;
+  }
+  .best{ margin-top:16px; font-size:12px; letter-spacing:1.5px; color:rgba(255,255,255,.45); }
+  .best b{ color:rgba(255,255,255,.8); }
+
+  /* ---------------- Touch ---------------- */
+  .touch{ position:fixed; inset:0; z-index:8; pointer-events:none; }
+  .touch.hidden{ display:none; }
+  .stick{
+    position:absolute; left:24px; bottom:26px; width:132px; height:132px;
+    border-radius:50%; background:rgba(255,255,255,.07);
+    border:2px solid rgba(255,255,255,.18); pointer-events:auto; touch-action:none;
+    backdrop-filter:blur(4px);
+  }
+  .knob{
+    position:absolute; left:50%; top:50%; width:58px; height:58px;
+    margin:-29px 0 0 -29px; border-radius:50%;
+    background:rgba(255,255,255,.78); box-shadow:0 6px 18px rgba(0,0,0,.45);
+  }
+  .jumpBtn{
+    position:absolute; right:24px; bottom:48px; width:90px; height:90px; border-radius:50%;
+    border:2px solid rgba(255,255,255,.28); background:rgba(255,217,59,.92);
+    color:#141414; font-family:inherit; font-weight:900; font-size:12px; letter-spacing:1.5px;
+    pointer-events:auto; touch-action:none; box-shadow:0 10px 26px rgba(0,0,0,.4);
+  }
+  .jumpBtn:active{ transform:scale(.94); }
+
+  .fatal{ max-width:520px; margin:0 auto; line-height:1.6; color:rgba(255,255,255,.8); }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="vignette"></div>
+<div id="damage"></div>
+
+<div id="hud" aria-hidden="true">
+  <div class="hud-top">
+    <div class="chips">
+      <div class="chip"><span class="emoji">&#127820;</span><span id="score">0</span></div>
+      <div class="chip small" id="lives">&#10084;&#65039;&#10084;&#65039;&#10084;&#65039;</div>
+    </div>
+    <div class="timer" id="timer">0:00</div>
+    <canvas id="radar" width="160" height="160"></canvas>
+  </div>
+
+  <div class="meters">
+    <div class="meter"><span>STAMINA</span><div class="track"><i id="stamina" class="fill stamina"></i></div></div>
+    <div class="meter"><span>GRU PROXIMITY</span><div class="track"><i id="danger" class="fill danger"></i></div></div>
+  </div>
+
+  <div id="warn" class="warn">GRU IS RIGHT BEHIND YOU!</div>
+  <div id="toast" class="toast"></div>
+  <div class="hint" id="hint">WASD MOVE &middot; SHIFT SPRINT &middot; SPACE JUMP &middot; MOUSE LOOK &middot; ESC PAUSE &middot; M MUTE</div>
+</div>
+
+<div id="touch" class="touch hidden">
+  <div id="stick" class="stick"><div id="knob" class="knob"></div></div>
+  <button id="jumpBtn" class="jumpBtn" type="button">JUMP</button>
+</div>
+
+<div id="startScreen" class="screen">
+  <div class="panel">
+    <div class="badge">GRU IS LOOKING FOR YOU</div>
+    <h1>MINION<br><span>RUN</span></h1>
+    <p class="lead">An open world full of bananas, and one very angry Gru. Grab bananas, keep your distance, and never stop moving.</p>
+    <div class="keys">
+      <div><kbd>WASD</kbd> Move</div>
+      <div><kbd>MOUSE</kbd> Look around</div>
+      <div><kbd>SHIFT</kbd> Sprint</div>
+      <div><kbd>SPACE</kbd> Jump</div>
+      <div><kbd>ESC</kbd> Pause</div>
+      <div><kbd>M</kbd> Mute</div>
+    </div>
+    <button id="playBtn" class="btn" type="button">PLAY</button>
+    <p class="best">Best run: <b id="bestStart">0</b> bananas</p>
+  </div>
+</div>
+
+<div id="pauseScreen" class="screen hidden">
+  <div class="panel">
+    <div class="badge">TAKE A BREATH</div>
+    <h2>PAUSED</h2>
+    <p class="lead">Gru will not pause. He never does.</p>
+    <button id="resumeBtn" class="btn" type="button">RESUME</button>
+    <button id="restartBtnPause" class="btn ghost" type="button">RESTART</button>
+  </div>
+</div>
+
+<div id="overScreen" class="screen hidden">
+  <div class="panel">
+    <div class="badge red">CAUGHT</div>
+    <h2>GRU GOT YOU</h2>
+    <p class="lead">You collected <b id="finalScore">0</b> bananas and survived <b id="finalTime">0:00</b>.</p>
+    <p class="best">Best run: <b id="bestOver">0</b> bananas</p>
+    <button id="againBtn" class="btn" type="button">RUN AGAIN</button>
+  </div>
+</div>
+
+<div id="loading" class="screen">
+  <div class="panel">
+    <div class="badge">MINION RUN</div>
+    <h2>LOADING...</h2>
+    <p class="lead">Warming up the bananas.</p>
+  </div>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     Boot / DOM
+  ============================================================ */
+  var loadingScreen = document.getElementById('loading');
+
+  function fatal(message) {
+    loadingScreen.innerHTML =
+      '<div class="panel"><div class="badge red">OOPS</div><h2>CANNOT START</h2>' +
+      '<p class="fatal">' + message + '</p></div>';
+    loadingScreen.classList.remove('hidden');
+  }
+
+  if (!window.THREE) {
+    fatal('three.min.js was not found. Keep it in the same folder as index.html and open the game again.');
+    return;
+  }
+
+  var canvas = document.getElementById('game');
+  var hud = document.getElementById('hud');
+  var scoreEl = document.getElementById('score');
+  var livesEl = document.getElementById('lives');
+  var timerEl = document.getElementById('timer');
+  var staminaEl = document.getElementById('stamina');
+  var dangerEl = document.getElementById('danger');
+  var warnEl = document.getElementById('warn');
+  var toastEl = document.getElementById('toast');
+  var hintEl = document.getElementById('hint');
+  var damageEl = document.getElementById('damage');
+  var startScreen = document.getElementById('startScreen');
+  var pauseScreen = document.getElementById('pauseScreen');
+  var overScreen = document.getElementById('overScreen');
+  var bestStartEl = document.getElementById('bestStart');
+  var bestOverEl = document.getElementById('bestOver');
+  var finalScoreEl = document.getElementById('finalScore');
+  var finalTimeEl = document.getElementById('finalTime');
+  var touchLayer = document.getElementById('touch');
+  var radar = document.getElementById('radar');
+  var radarCtx = radar.getContext('2d');
+
+  var isTouch = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+                ('ontouchstart' in window);
+
+  /* ============================================================
+     Small helpers
+  ============================================================ */
+  var TAU = Math.PI * 2;
+  function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function rand(a, b) { return a + Math.random() * (b - a); }
+  function damp(a, b, lambda, dt) { return a + (b - a) * (1 - Math.exp(-lambda * dt)); }
+  function angleLerp(a, b, t) {
+    var d = ((b - a + Math.PI) % TAU + TAU) % TAU - Math.PI;
+    return a + d * t;
+  }
+  function formatTime(sec) {
+    var s = Math.max(0, Math.floor(sec));
+    var m = Math.floor(s / 60);
+    var r = s % 60;
+    return m + ':' + (r < 10 ? '0' : '') + r;
+  }
+
+  /* ============================================================
+     Renderer / scene / camera
+  ============================================================ */
+  var renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true,
+      powerPreference: 'high-performance'
+    });
+  } catch (err) {
+    fatal('WebGL is not available in this browser. Try Chrome, Edge or Firefox with hardware acceleration enabled.');
+    return;
+  }
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.98;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x9fd3ff);
+  scene.fog = new THREE.Fog(0xa9d8f5, 95, 330);
+
+  var camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 900);
+  camera.position.set(0, 5, 12);
+
+  /* Sky dome */
+  var sky = new THREE.Mesh(
+    new THREE.SphereGeometry(600, 32, 18),
+    new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(0x2f7bd8) },
+        bottomColor: { value: new THREE.Color(0xeaf6ff) }
+      },
+      vertexShader: [
+        'varying vec3 vDir;',
+        'void main() {',
+        '  vDir = normalize(position);',
+        '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'uniform vec3 topColor;',
+        'uniform vec3 bottomColor;',
+        'varying vec3 vDir;',
+        'void main() {',
+        '  float h = clamp(vDir.y * 0.5 + 0.5, 0.0, 1.0);',
+        '  vec3 col = mix(bottomColor, topColor, pow(h, 1.5));',
+        '  gl_FragColor = vec4(col, 1.0);',
+        '}'
+      ].join('\n'),
+      side: THREE.BackSide,
+      depthWrite: false
+    })
+  );
+  sky.frustumCulled = false;
+  scene.add(sky);
+
+  /* Lights */
+  var hemi = new THREE.HemisphereLight(0xcbe8ff, 0x3f6b33, 0.45);
+  scene.add(hemi);
+
+  var sun = new THREE.DirectionalLight(0xfff1cf, 1.25);
+  sun.position.set(46, 80, 8);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -42;
+  sun.shadow.camera.right = 42;
+  sun.shadow.camera.top = 42;
+  sun.shadow.camera.bottom = -42;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 220;
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.shadow.bias = -0.0005;
+  sun.shadow.normalBias = 0.035;
+  scene.add(sun);
+  scene.add(sun.target);
+
+  /* ============================================================
+     Materials & textures
+  ============================================================ */
+  function makeGrassTexture() {
+    var c = document.createElement('canvas');
+    c.width = c.height = 256;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#5d9f3d';
+    ctx.fillRect(0, 0, 256, 256);
+
+    for (var i = 0; i < 3200; i++) {
+      var l = 28 + Math.random() * 24;
+      ctx.fillStyle = 'hsl(' + (88 + Math.random() * 30) + ', ' + (42 + Math.random() * 24) + '%, ' + l + '%)';
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 2, 2 + Math.random() * 4);
+    }
+    for (var j = 0; j < 26; j++) {
+      ctx.beginPath();
+      ctx.arc(Math.random() * 256, Math.random() * 256, 10 + Math.random() * 26, 0, TAU);
+      ctx.fillStyle = 'rgba(38, 92, 34, 0.10)';
+      ctx.fill();
+    }
+
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(120, 120);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return tex;
+  }
+
+  var grassTex = makeGrassTexture();
+
+  var matYellow = new THREE.MeshStandardMaterial({ color: 0xffd93b, roughness: 0.52 });
+  var matBlue = new THREE.MeshStandardMaterial({ color: 0x2f6bd8, roughness: 0.62 });
+  var matBlueDark = new THREE.MeshStandardMaterial({ color: 0x1f4fa8, roughness: 0.7 });
+  var matBlack = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.72 });
+  var matWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.05 });
+  var matMetal = new THREE.MeshStandardMaterial({ color: 0x8d949c, roughness: 0.5, metalness: 0.45 });
+
+  var matTrunk = new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 0.95 });
+  var matLeafA = new THREE.MeshStandardMaterial({ color: 0x3f8f3a, roughness: 0.85, flatShading: true });
+  var matLeafB = new THREE.MeshStandardMaterial({ color: 0x4fa546, roughness: 0.85, flatShading: true });
+  var matLeafC = new THREE.MeshStandardMaterial({ color: 0x2f7a33, roughness: 0.85, flatShading: true });
+  var matRock = new THREE.MeshStandardMaterial({ color: 0x8b9299, roughness: 0.95, flatShading: true });
+  var matDirt = new THREE.MeshStandardMaterial({ color: 0x8a6a43, roughness: 1 });
+  var matBanana = new THREE.MeshStandardMaterial({
+    color: 0xf2c824, roughness: 0.55, metalness: 0.05,
+    emissive: 0x6b5000, emissiveIntensity: 0.15
+  });
+  var matBananaGold = new THREE.MeshStandardMaterial({
+    color: 0xffc107, roughness: 0.28, metalness: 0.55,
+    emissive: 0xff9d00, emissiveIntensity: 0.55
+  });
+  var matRing = new THREE.MeshBasicMaterial({
+    color: 0xffe14d, transparent: true, opacity: 0.30, depthWrite: false, side: THREE.DoubleSide
+  });
+  var matRingGold = new THREE.MeshBasicMaterial({
+    color: 0xffb300, transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide
+  });
+
+  /* ============================================================
+     World
+  ============================================================ */
+  var WORLD_R = 172;
+  var obstacles = [];
+
+  var ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(620, 620),
+    new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1, metalness: 0 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  /* spawn clearing */
+  var clearing = new THREE.Mesh(
+    new THREE.CircleGeometry(9, 40),
+    new THREE.MeshStandardMaterial({ color: 0x4a3624, roughness: 1, transparent: true, opacity: 0.94, depthWrite: false })
+  );
+  clearing.rotation.x = -Math.PI / 2;
+  clearing.position.y = 0.02;
+  scene.add(clearing);
+
+  /* trees */
+  var treeGeoFoliage = new THREE.IcosahedronGeometry(1, 0);
+  var treeGeoTrunk = new THREE.CylinderGeometry(0.30, 0.44, 1, 7);
+
+  function addTree(x, z, s) {
+    var g = new THREE.Group();
+    var trunkH = 2.6 * s;
+    var trunk = new THREE.Mesh(treeGeoTrunk, matTrunk);
+    trunk.scale.set(s, trunkH, s);
+    trunk.position.y = trunkH * 0.5;
+    trunk.castShadow = true;
+    trunk.receiveShadow = true;
+    g.add(trunk);
+
+    var layers = 2 + Math.floor(Math.random() * 2);
+    var mats = [matLeafA, matLeafB, matLeafC];
+    for (var i = 0; i < layers; i++) {
+      var r = (2.0 - i * 0.42) * s;
+      var foliage = new THREE.Mesh(treeGeoFoliage, mats[(Math.random() * 3) | 0]);
+      foliage.position.set(rand(-0.5, 0.5) * s, trunkH + i * 1.25 * s, rand(-0.5, 0.5) * s);
+      foliage.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3));
+      foliage.scale.setScalar(r);
+      foliage.castShadow = true;
+      foliage.receiveShadow = true;
+      g.add(foliage);
+    }
+
+    g.position.set(x, 0, z);
+    g.rotation.y = rand(0, TAU);
+    scene.add(g);
+    obstacles.push({ x: x, z: z, r: 0.52 * s });
+  }
+
+  function addRock(x, z, s) {
+    var rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), matRock);
+    rock.position.set(x, 0.34 * s, z);
+    rock.scale.set(s, s * rand(0.55, 0.9), s * rand(0.8, 1.2));
+    rock.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3));
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    scene.add(rock);
+    if (s > 0.7) obstacles.push({ x: x, z: z, r: 0.75 * s });
+  }
+
+  function scatter(count, minR, maxR, spacing, place) {
+    var placed = 0;
+    var guard = 0;
+    while (placed < count && guard < count * 40) {
+      guard++;
+      var a = Math.random() * TAU;
+      var r = Math.sqrt(rand(minR * minR, maxR * maxR));
+      var x = Math.cos(a) * r;
+      var z = Math.sin(a) * r;
+      var ok = true;
+      for (var i = 0; i < obstacles.length; i++) {
+        var o = obstacles[i];
+        if (Math.hypot(x - o.x, z - o.z) < o.r + spacing) { ok = false; break; }
+      }
+      if (!ok) continue;
+      place(x, z);
+      placed++;
+    }
+  }
+
+  scatter(130, 15, 182, 3.0, function (x, z) {
+    addTree(x, z, rand(0.85, 1.55));
+  });
+
+  scatter(55, 12, 186, 1.2, function (x, z) {
+    addRock(x, z, rand(0.45, 1.25));
+  });
+
+  /* grass tufts (instanced, cheap) */
+  function addTufts(count, color, radius) {
+    var geo = new THREE.ConeGeometry(0.075, 0.44, 4);
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 1, flatShading: true });
+    var mesh = new THREE.InstancedMesh(geo, mat, count);
+    var dummy = new THREE.Object3D();
+    for (var i = 0; i < count; i++) {
+      var a = Math.random() * TAU;
+      var r = Math.sqrt(Math.random()) * radius;
+      dummy.position.set(Math.cos(a) * r, 0.18, Math.sin(a) * r);
+      dummy.rotation.set(rand(-0.22, 0.22), rand(0, TAU), rand(-0.22, 0.22));
+      dummy.scale.setScalar(rand(0.7, 1.3));
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+  }
+  addTufts(1200, 0x478c36, 188);
+  addTufts(700, 0x59a244, 188);
+
+  /* low hills in the distance */
+  var matHill = new THREE.MeshStandardMaterial({ color: 0x557a52, roughness: 1, flatShading: true });
+  var hillGeo = new THREE.SphereGeometry(1, 14, 10);
+  for (var hi = 0; hi < 30; hi++) {
+    var ha = (hi / 30) * TAU + rand(-0.08, 0.08);
+    var hr = rand(205, 255);
+    var hill = new THREE.Mesh(hillGeo, matHill);
+    hill.position.set(Math.cos(ha) * hr, rand(-8, 1), Math.sin(ha) * hr);
+    hill.scale.set(rand(34, 62), rand(12, 26), rand(34, 62));
+    hill.rotation.y = rand(0, TAU);
+    scene.add(hill);
+  }
+
+  /* Gru's mansion (decor, out of reach) */
+  (function buildMansion() {
+    var g = new THREE.Group();
+    var wall = new THREE.MeshStandardMaterial({ color: 0x33323a, roughness: 0.9 });
+    var roof = new THREE.MeshStandardMaterial({ color: 0x23232a, roughness: 0.95 });
+    var glow = new THREE.MeshBasicMaterial({ color: 0xffd77a });
+
+    var base = new THREE.Mesh(new THREE.BoxGeometry(30, 20, 20), wall);
+    base.position.y = 10;
+    g.add(base);
+
+    var roofMain = new THREE.Mesh(new THREE.ConeGeometry(24, 12, 4), roof);
+    roofMain.position.y = 26;
+    roofMain.rotation.y = Math.PI / 4;
+    g.add(roofMain);
+
+    for (var i = 0; i < 4; i++) {
+      var tx = (i < 2 ? -1 : 1) * 12.5;
+      var tz = (i % 2 === 0 ? -1 : 1) * 8;
+      var tower = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 28, 8), wall);
+      tower.position.set(tx, 14, tz);
+      g.add(tower);
+      var cap = new THREE.Mesh(new THREE.ConeGeometry(5.2, 9, 8), roof);
+      cap.position.set(tx, 32.5, tz);
+      g.add(cap);
+    }
+
+    for (var w = 0; w < 6; w++) {
+      var win = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.2), glow);
+      win.position.set(-8 + w * 3.2, 12 + (w % 2) * 4, 10.05);
+      g.add(win);
+    }
+
+    g.position.set(0, 0, -228);
+    scene.add(g);
+  })();
+
+  /* clouds */
+  var cloudGeo = new THREE.SphereGeometry(1, 10, 8);
+  var cloudMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 1, fog: false,
+    emissive: 0x9ab8d8, emissiveIntensity: 0.55
+  });
+  var clouds = [];
+  for (var ci = 0; ci < 16; ci++) {
+    var cg = new THREE.Group();
+    var puffs = 3 + Math.floor(Math.random() * 3);
+    for (var pj = 0; pj < puffs; pj++) {
+      var puff = new THREE.Mesh(cloudGeo, cloudMat);
+      puff.position.set(rand(-9, 9), rand(-2, 2), rand(-6, 6));
+      puff.scale.setScalar(rand(4, 8));
+      cg.add(puff);
+    }
+    cg.position.set(rand(-280, 280), rand(48, 78), rand(-280, 280));
+    cg.scale.set(1, 0.55, 1);
+    scene.add(cg);
+    clouds.push(cg);
+  }
+
+  /* bananas */
+  var bananaCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.62, 0.12, 0),
+    new THREE.Vector3(-0.26, -0.16, 0),
+    new THREE.Vector3(0.08, -0.20, 0),
+    new THREE.Vector3(0.56, 0.06, 0)
+  ]);
+  var bananaGeo = new THREE.TubeGeometry(bananaCurve, 26, 0.145, 8, false);
+  var bananaTipGeo = new THREE.SphereGeometry(0.062, 8, 6);
+  var bananaRingGeo = new THREE.RingGeometry(0.82, 1.02, 28);
+
+  var bananas = [];
+
+  function makeBanana(golden) {
+    var group = new THREE.Group();
+    var tube = new THREE.Mesh(bananaGeo, golden ? matBananaGold : matBanana);
+    tube.castShadow = true;
+    group.add(tube);
+
+    var tipA = new THREE.Mesh(bananaTipGeo, matBlack);
+    tipA.position.set(-0.62, 0.12, 0);
+    group.add(tipA);
+    var tipB = new THREE.Mesh(bananaTipGeo, matBlack);
+    tipB.position.set(0.56, 0.06, 0);
+    group.add(tipB);
+
+    group.children[0].rotation.z = 0.45;
+    group.scale.setScalar(1.35);
+    return group;
+  }
+
+  var bananaSpotGeoOk = true;
+
+  function findSpot(minPlayerDist) {
+    var px = player ? player.root.position.x : 0;
+    var pz = player ? player.root.position.z : 0;
+    for (var attempt = 0; attempt < 80; attempt++) {
+      var a = Math.random() * TAU;
+      var r = Math.sqrt(Math.random()) * (WORLD_R - 7);
+      var x = Math.cos(a) * r;
+      var z = Math.sin(a) * r;
+      if (Math.hypot(x - px, z - pz) < minPlayerDist) continue;
+      var ok = true;
+      for (var i = 0; i < obstacles.length; i++) {
+        var o = obstacles[i];
+        if (Math.hypot(x - o.x, z - o.z) < o.r + 1.6) { ok = false; break; }
+      }
+      if (!ok) continue;
+      return { x: x, z: z };
+    }
+    return { x: rand(-60, 60), z: rand(-60, 60) };
+  }
+
+  for (var bi = 0; bi < 46; bi++) {
+    var golden = bi % 8 === 0;
+    var spot = findSpot(14);
+    var mesh = makeBanana(golden);
+    mesh.position.set(spot.x, 1.15, spot.z);
+    scene.add(mesh);
+
+    var ring = new THREE.Mesh(bananaRingGeo, golden ? matRingGold : matRing);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(spot.x, 0.05, spot.z);
+    scene.add(ring);
+
+    bananas.push({
+      mesh: mesh,
+      ring: ring,
+      active: true,
+      golden: golden,
+      timer: 0,
+      phase: rand(0, TAU),
+      baseY: 1.15
+    });
+  }
+
+  /* particles */
+  var particleGeo = new THREE.SphereGeometry(0.13, 8, 6);
+  var particleMatA = new THREE.MeshBasicMaterial({ color: 0xffe14d });
+  var particleMatB = new THREE.MeshBasicMaterial({ color: 0xffb300 });
+  var particles = [];
+
+  function burst(pos, golden) {
+    var mat = golden ? particleMatB : particleMatA;
+    for (var i = 0; i < 12; i++) {
+      var p = new THREE.Mesh(particleGeo, mat);
+      p.position.copy(pos);
+      p.userData.v = new THREE.Vector3(rand(-3.4, 3.4), rand(1.6, 5.4), rand(-3.4, 3.4));
+      p.userData.life = rand(0.35, 0.72);
+      p.userData.max = p.userData.life;
+      scene.add(p);
+      particles.push(p);
+    }
+  }
+
+  /* ============================================================
+     Minion (player)
+  ============================================================ */
+  function createMinion() {
+    var root = new THREE.Group();
+    var model = new THREE.Group();
+    root.add(model);
+
+    var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.56, 0.72, 6, 18), matYellow);
+    body.position.y = 1.16;
+    model.add(body);
+
+    var overalls = new THREE.Mesh(new THREE.CylinderGeometry(0.578, 0.60, 0.74, 20, 1, true), matBlue);
+    overalls.position.y = 0.82;
+    model.add(overalls);
+
+    var bib = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.52, 0.10), matBlue);
+    bib.position.set(0, 1.12, 0.50);
+    model.add(bib);
+
+    var pocket = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.22, 0.05), matBlueDark);
+    pocket.position.set(0, 1.02, 0.55);
+    model.add(pocket);
+
+    var backPocket = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, 0.06), matBlueDark);
+    backPocket.position.set(0, 1.00, -0.575);
+    model.add(backPocket);
+
+    for (var b = -1; b <= 1; b += 2) {
+      var backStrap = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.70, 0.07), matBlueDark);
+      backStrap.position.set(b * 0.26, 1.40, -0.545);
+      backStrap.rotation.z = b * -0.10;
+      model.add(backStrap);
+    }
+
+    for (var s = -1; s <= 1; s += 2) {
+      var strap = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.78, 0.08), matBlueDark);
+      strap.position.set(s * 0.26, 1.40, 0.52);
+      strap.rotation.z = s * 0.10;
+      model.add(strap);
+    }
+
+    var band = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.075, 8, 28), matBlack);
+    band.position.set(0, 1.63, 0.02);
+    band.rotation.x = Math.PI / 2;
+    band.scale.set(1, 0.93, 1);
+    model.add(band);
+
+    for (var e = -1; e <= 1; e += 2) {
+      var eye = new THREE.Mesh(new THREE.SphereGeometry(0.235, 20, 16), matWhite);
+      eye.position.set(e * 0.235, 1.64, 0.40);
+      model.add(eye);
+
+      var pupil = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 12), matBlack);
+      pupil.position.set(e * 0.235, 1.64, 0.60);
+      model.add(pupil);
+
+      var rim = new THREE.Mesh(new THREE.TorusGeometry(0.245, 0.055, 8, 24), matMetal);
+      rim.position.set(e * 0.235, 1.64, 0.52);
+      model.add(rim);
+    }
+
+    var mouth = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.028, 6, 16, Math.PI), matBlack);
+    mouth.position.set(0, 1.30, 0.545);
+    mouth.rotation.z = Math.PI;
+    model.add(mouth);
+
+    for (var h = 0; h < 3; h++) {
+      var hair = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.17, 5), matBlack);
+      hair.position.set((h - 1) * 0.10, 2.16, 0.02);
+      hair.rotation.z = (h - 1) * 0.38;
+      model.add(hair);
+    }
+
+    var arms = [];
+    for (var a = -1; a <= 1; a += 2) {
+      var pivot = new THREE.Group();
+      pivot.position.set(a * 0.56, 1.50, 0);
+
+      var arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.115, 0.46, 4, 10), matYellow);
+      arm.position.y = -0.30;
+      pivot.add(arm);
+
+      var glove = new THREE.Mesh(new THREE.SphereGeometry(0.155, 12, 10), matBlack);
+      glove.position.y = -0.60;
+      pivot.add(glove);
+
+      pivot.rotation.z = a * 0.16;
+      model.add(pivot);
+      arms.push(pivot);
+    }
+
+    var legs = [];
+    for (var l = -1; l <= 1; l += 2) {
+      var lp = new THREE.Group();
+      lp.position.set(l * 0.24, 0.42, 0);
+
+      var leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.145, 0.12, 4, 10), matYellow);
+      leg.position.y = -0.16;
+      lp.add(leg);
+
+      var shoe = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.16, 0.44), matBlack);
+      shoe.position.set(0, -0.34, 0.07);
+      lp.add(shoe);
+
+      model.add(lp);
+      legs.push(lp);
+    }
+
+    root.traverse(function (o) {
+      if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    });
+
+    return { root: root, model: model, arms: arms, legs: legs };
+  }
+
+  var minion = createMinion();
+  scene.add(minion.root);
+
+  var player = {
+    root: minion.root,
+    model: minion.model,
+    arms: minion.arms,
+    legs: minion.legs,
+    vel: new THREE.Vector3(),
+    vy: 0,
+    onGround: true,
+    walk: 0,
+    rot: Math.PI
+  };
+  player.root.position.set(0, 0, 0);
+  player.root.rotation.y = Math.PI;
+
+  /* ============================================================
+     Gru
+  ============================================================ */
+  function makeAlertTexture() {
+    var c = document.createElement('canvas');
+    c.width = c.height = 128;
+    var ctx = c.getContext('2d');
+    ctx.beginPath();
+    ctx.arc(64, 64, 57, 0, TAU);
+    ctx.fillStyle = '#ff3b30';
+    ctx.fill();
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 88px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('!', 64, 62);
+    var tex = new THREE.CanvasTexture(c);
+    tex.encoding = THREE.sRGBEncoding;
+    return tex;
+  }
+
+  function createGru() {
+    var root = new THREE.Group();
+    var model = new THREE.Group();
+    root.add(model);
+
+    var coatMat = new THREE.MeshStandardMaterial({ color: 0x2e3038, roughness: 0.88 });
+    var skinMat = new THREE.MeshStandardMaterial({ color: 0xd9b18a, roughness: 0.72 });
+    var scarfMat = new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.92 });
+    var hairMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, roughness: 0.9 });
+
+    var torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.00, 6, 18), coatMat);
+    torso.position.y = 1.55;
+    model.add(torso);
+
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 22, 18), skinMat);
+    head.position.y = 2.92;
+    model.add(head);
+
+    var hair = new THREE.Mesh(new THREE.SphereGeometry(0.43, 16, 12), hairMat);
+    hair.position.set(0, 3.24, -0.04);
+    hair.scale.set(1, 0.36, 1);
+    model.add(hair);
+
+    var nose = new THREE.Mesh(new THREE.ConeGeometry(0.135, 0.56, 10), skinMat);
+    nose.position.set(0, 2.90, 0.52);
+    nose.rotation.x = Math.PI / 2;
+    model.add(nose);
+
+    for (var e = -1; e <= 1; e += 2) {
+      var eye = new THREE.Mesh(new THREE.SphereGeometry(0.10, 12, 10), matWhite);
+      eye.position.set(e * 0.155, 3.04, 0.40);
+      model.add(eye);
+      var pupil = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), matBlack);
+      pupil.position.set(e * 0.155, 3.04, 0.485);
+      model.add(pupil);
+
+      var brow = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.045, 0.04), hairMat);
+      brow.position.set(e * 0.16, 3.17, 0.43);
+      brow.rotation.z = e * -0.18;
+      model.add(brow);
+    }
+
+    var scarf = new THREE.Mesh(new THREE.TorusGeometry(0.50, 0.17, 8, 22), scarfMat);
+    scarf.position.set(0, 2.56, 0);
+    scarf.rotation.x = Math.PI / 2;
+    scarf.scale.set(1, 0.9, 1);
+    model.add(scarf);
+
+    var tailA = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.85, 0.09), scarfMat);
+    tailA.position.set(-0.18, 2.10, -0.60);
+    tailA.rotation.z = 0.12;
+    model.add(tailA);
+    var tailB = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.55, 0.08), scarfMat);
+    tailB.position.set(0.14, 2.00, -0.64);
+    tailB.rotation.z = -0.22;
+    model.add(tailB);
+
+    var arms = [];
+    for (var a = -1; a <= 1; a += 2) {
+      var pivot = new THREE.Group();
+      pivot.position.set(a * 0.66, 2.22, 0);
+
+      var arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.155, 0.70, 4, 10), coatMat);
+      arm.position.y = -0.44;
+      pivot.add(arm);
+
+      var hand = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), skinMat);
+      hand.position.y = -0.88;
+      pivot.add(hand);
+
+      pivot.rotation.z = a * 0.12;
+      pivot.rotation.x = -0.30;
+      model.add(pivot);
+      arms.push(pivot);
+    }
+
+    var legs = [];
+    for (var l = -1; l <= 1; l += 2) {
+      var lp = new THREE.Group();
+      lp.position.set(l * 0.28, 0.60, 0);
+
+      var leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.175, 0.32, 4, 10), coatMat);
+      leg.position.y = -0.30;
+      lp.add(leg);
+
+      var shoe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.19, 0.52), matBlack);
+      shoe.position.set(0, -0.53, 0.07);
+      lp.add(shoe);
+
+      model.add(lp);
+      legs.push(lp);
+    }
+
+    root.traverse(function (o) {
+      if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    });
+
+    var alert = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makeAlertTexture(), transparent: true, depthWrite: false, opacity: 0
+    }));
+    alert.scale.set(1.15, 1.15, 1);
+    alert.position.set(0, 3.95, 0);
+    root.add(alert);
+
+    return { root: root, model: model, arms: arms, legs: legs, alert: alert, coatMat: coatMat };
+  }
+
+  var gruModel = createGru();
+  scene.add(gruModel.root);
+
+  var gru = {
+    root: gruModel.root,
+    model: gruModel.model,
+    arms: gruModel.arms,
+    legs: gruModel.legs,
+    alert: gruModel.alert,
+    coatMat: gruModel.coatMat,
+    speed: 4.2,
+    bob: 0,
+    stun: 0
+  };
+  gru.root.position.set(0, 0, -62);
+
+  /* ============================================================
+     Game state
+  ============================================================ */
+  var GRU_BASE = 4.2;
+  var GRU_MAX = 9.2;
+  var PLAYER_WALK = 6.1;
+  var PLAYER_SPRINT = 10.2;
+  var CATCH_RADIUS = 2.15;
+
+  var state = 'menu';
+  var score = 0;
+  var lives = 3;
+  var elapsed = 0;
+  var stamina = 100;
+  var staminaCooldown = 0;
+  var invuln = 0;
+  var shake = 0;
+  var nowT = 0;
+  var lastShownSecond = -1;
+  var toastTimer = 0;
+  var best = readBest();
+
+  function readBest() {
+    try {
+      return parseInt(window.localStorage.getItem('minionRunBest') || '0', 10) || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+  function writeBest(value) {
+    try { window.localStorage.setItem('minionRunBest', String(value)); } catch (e) { /* ignore */ }
+  }
+
+  bestStartEl.textContent = best;
+  bestOverEl.textContent = best;
+
+  /* ============================================================
+     Camera state
+  ============================================================ */
+  var yaw = 0;
+  var pitch = 0.24;
+  var camDist = 8.2;
+  var camPos = new THREE.Vector3(0, 5, 12);
+  var lookAtTarget = new THREE.Vector3(0, 1.75, 0);
+  var camTarget = new THREE.Vector3(0, 1.75, 0);
+
+  /* ============================================================
+     Input
+  ============================================================ */
+  var keys = Object.create(null);
+  var jumpQueued = false;
+  var dragging = false;
+  var wasLocked = false;
+  var stickVec = new THREE.Vector2(0, 0);
+  var stickId = null;
+
+  var forwardVec = new THREE.Vector3();
+  var rightVec = new THREE.Vector3();
+  var wishVec = new THREE.Vector3();
+
+  window.addEventListener('keydown', function (e) {
+    if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown' ||
+        e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+      e.preventDefault();
+    }
+    if (e.code === 'Space') jumpQueued = true;
+    if (e.code === 'Escape') {
+      if (state === 'playing') pauseGame();
+      else if (state === 'paused') resumeGame();
+    }
+    if (e.code === 'KeyM') {
+      muted = !muted;
+      toast(muted ? 'SOUND OFF' : 'SOUND ON');
+    }
+    keys[e.code] = true;
+  });
+
+  window.addEventListener('keyup', function (e) {
+    keys[e.code] = false;
+  });
+
+  window.addEventListener('blur', function () {
+    keys = Object.create(null);
+    stickVec.set(0, 0);
+    if (state === 'playing') pauseGame();
+  });
+
+  document.addEventListener('mousemove', function (e) {
+    if (state !== 'playing' || isTouch) return;
+    var locked = document.pointerLockElement === canvas;
+    if (!locked && !dragging) return;
+    yaw -= e.movementX * 0.0026;
+    pitch = clamp(pitch + e.movementY * 0.0022, 0.03, 1.20);
+  });
+
+  canvas.addEventListener('mousedown', function (e) {
+    if (state !== 'playing' || isTouch) return;
+    if (e.button === 0) {
+      dragging = true;
+      if (!document.pointerLockElement) requestLock();
+    }
+  });
+  window.addEventListener('mouseup', function () { dragging = false; });
+
+  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  canvas.addEventListener('wheel', function (e) {
+    if (state !== 'playing') return;
+    camDist = clamp(camDist + Math.sign(e.deltaY) * 0.7, 5.2, 14);
+  }, { passive: true });
+
+  function requestLock() {
+    if (isTouch) return;
+    if (document.pointerLockElement) return;
+    try {
+      var p = canvas.requestPointerLock();
+      if (p && typeof p.catch === 'function') p.catch(function () { /* drag-look fallback */ });
+    } catch (err) { /* drag-look fallback */ }
+  }
+
+  document.addEventListener('pointerlockchange', function () {
+    if (document.pointerLockElement === canvas) {
+      wasLocked = true;
+    } else if (wasLocked) {
+      wasLocked = false;
+      if (state === 'playing') pauseGame();
+    }
+  });
+
+  /* touch look */
+  var lookTouchId = null;
+  var lastTouchX = 0;
+  var lastTouchY = 0;
+
+  canvas.addEventListener('pointerdown', function (e) {
+    if (e.pointerType !== 'touch' || state !== 'playing') return;
+    lookTouchId = e.pointerId;
+    lastTouchX = e.clientX;
+    lastTouchY = e.clientY;
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (e.pointerId !== lookTouchId) return;
+    var dx = e.clientX - lastTouchX;
+    var dy = e.clientY - lastTouchY;
+    lastTouchX = e.clientX;
+    lastTouchY = e.clientY;
+    yaw -= dx * 0.0052;
+    pitch = clamp(pitch + dy * 0.0052, 0.03, 1.20);
+  });
+  function endLook(e) {
+    if (e.pointerId === lookTouchId) lookTouchId = null;
+  }
+  canvas.addEventListener('pointerup', endLook);
+  canvas.addEventListener('pointercancel', endLook);
+
+  /* joystick */
+  var stickEl = document.getElementById('stick');
+  var knobEl = document.getElementById('knob');
+
+  function stickMove(e) {
+    if (e.pointerId !== stickId) return;
+    var r = stickEl.getBoundingClientRect();
+    var dx = e.clientX - (r.left + r.width / 2);
+    var dy = e.clientY - (r.top + r.height / 2);
+    var max = r.width * 0.32;
+    var len = Math.hypot(dx, dy) || 1;
+    var k = Math.min(1, len / max);
+    var ox = (dx / len) * max * k;
+    var oy = (dy / len) * max * k;
+    knobEl.style.transform = 'translate(' + ox + 'px,' + oy + 'px)';
+    stickVec.set(ox / max, oy / max);
+  }
+  stickEl.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    stickId = e.pointerId;
+    try { stickEl.setPointerCapture(stickId); } catch (err) { /* ignore */ }
+    stickMove(e);
+  });
+  stickEl.addEventListener('pointermove', function (e) {
+    if (stickId !== null) stickMove(e);
+  });
+  function stickEnd(e) {
+    if (e.pointerId !== stickId) return;
+    stickId = null;
+    stickVec.set(0, 0);
+    knobEl.style.transform = 'translate(0px,0px)';
+  }
+  stickEl.addEventListener('pointerup', stickEnd);
+  stickEl.addEventListener('pointercancel', stickEnd);
+
+  var jumpBtn = document.getElementById('jumpBtn');
+  jumpBtn.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    if (state === 'playing') jumpQueued = true;
+  });
+
+  if (isTouch) {
+    touchLayer.classList.remove('hidden');
+    hintEl.textContent = 'JOYSTICK MOVE \u00B7 DRAG TO LOOK \u00B7 TAP JUMP';
+    document.querySelector('.keys').style.display = 'none';
+  }
+
+  /* ============================================================
+     Audio (tiny WebAudio synth, no files)
+  ============================================================ */
+  var audioCtx = null;
+  var muted = false;
+
+  function audio() {
+    if (!audioCtx) {
+      try {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+      } catch (e) { audioCtx = null; }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(function () {});
+    }
+    return audioCtx;
+  }
+
+  function tone(freq, dur, type, vol, slide, delay) {
+    var ctx = audio();
+    if (!ctx || muted) return;
+    var t0 = ctx.currentTime + (delay || 0);
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    if (slide) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t0 + dur);
+    }
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol || 0.07, t0 + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  }
+
+  var sfx = {
+    collect: function () {
+      tone(880, 0.08, 'triangle', 0.05);
+      tone(1320, 0.10, 'triangle', 0.045, 0, 0.06);
+    },
+    golden: function () {
+      tone(660, 0.10, 'square', 0.04);
+      tone(880, 0.10, 'square', 0.04, 0, 0.09);
+      tone(1320, 0.18, 'triangle', 0.05, 0, 0.18);
+    },
+    jump: function () {
+      tone(420, 0.16, 'sine', 0.045, 380);
+    },
+    caught: function () {
+      tone(150, 0.45, 'sawtooth', 0.09, -70);
+      tone(90, 0.5, 'square', 0.05, -30, 0.05);
+    },
+    freeze: function () {
+      tone(1200, 0.12, 'sine', 0.04, -400);
+      tone(700, 0.20, 'sine', 0.04, -200, 0.10);
+    },
+    start: function () {
+      tone(520, 0.10, 'triangle', 0.05);
+      tone(780, 0.10, 'triangle', 0.05, 0, 0.10);
+      tone(1040, 0.18, 'triangle', 0.05, 0, 0.20);
+    }
+  };
+
+  /* ============================================================
+     HUD / toasts / screens
+  ============================================================ */
+  function updateScoreHud() {
+    scoreEl.textContent = score;
+  }
+  function updateLivesHud() {
+    var out = '';
+    for (var i = 0; i < 3; i++) out += i < lives ? '\u2764\uFE0F' : '\uD83D\uDDA4';
+    livesEl.textContent = out;
+  }
+  function toast(message) {
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    toastTimer = 2.3;
+  }
+  function flashDamage() {
+    damageEl.classList.add('on');
+    window.setTimeout(function () { damageEl.classList.remove('on'); }, 190);
+  }
+  function showScreen(el) { el.classList.remove('hidden'); }
+  function hideScreen(el) { el.classList.add('hidden'); }
+
+  function updateHud(dt) {
+    staminaEl.style.width = clamp(stamina, 0, 100).toFixed(1) + '%';
+
+    var d = distanceToGru();
+    var danger = clamp(1 - (d - 6) / 52, 0, 1);
+    dangerEl.style.width = (danger * 100).toFixed(1) + '%';
+    warnEl.classList.toggle('show', state === 'playing' && danger > 0.78 && invuln <= 0);
+
+    var sec = Math.floor(elapsed);
+    if (sec !== lastShownSecond) {
+      lastShownSecond = sec;
+      timerEl.textContent = formatTime(elapsed);
+    }
+
+    if (toastTimer > 0) {
+      toastTimer -= dt;
+      if (toastTimer <= 0) toastEl.classList.remove('show');
+    }
+  }
+
+  function distanceToGru() {
+    var dx = gru.root.position.x - player.root.position.x;
+    var dz = gru.root.position.z - player.root.position.z;
+    return Math.hypot(dx, dz);
+  }
+
+  /* ============================================================
+     Camera
+  ============================================================ */
+  function updateCamera(dt) {
+    sky.position.copy(camera.position);
+
+    if (state === 'menu' || state === 'over') {
+      var orbitT = nowT * (state === 'menu' ? 0.14 : 0.20);
+      var center = player.root.position;
+      var radius = state === 'menu' ? 14 : 9;
+      var desired = new THREE.Vector3(
+        center.x + Math.sin(orbitT) * radius,
+        center.y + (state === 'menu' ? 7.0 : 5.2),
+        center.z + Math.cos(orbitT) * radius
+      );
+      camera.position.lerp(desired, 1 - Math.exp(-3.2 * dt));
+      camera.lookAt(center.x, center.y + 1.7, center.z);
+      lookAtTarget.set(center.x, center.y + 1.7, center.z);
+      camPos.copy(camera.position);
+      return;
+    }
+
+    if (state === 'paused') {
+      camera.lookAt(lookAtTarget);
+      return;
+    }
+
+    camTarget.set(player.root.position.x, player.root.position.y + 1.75, player.root.position.z);
+
+    var cosPitch = Math.cos(pitch);
+    var offset = new THREE.Vector3(
+      Math.sin(yaw) * cosPitch,
+      Math.sin(pitch),
+      Math.cos(yaw) * cosPitch
+    ).multiplyScalar(camDist);
+
+    var desiredPos = camTarget.clone().add(offset);
+
+    /* keep the camera above the grass */
+    if (desiredPos.y < 1.15) desiredPos.y = 1.15;
+
+    camPos.lerp(desiredPos, 1 - Math.exp(-11 * dt));
+    camera.position.copy(camPos);
+
+    if (shake > 0) {
+      camera.position.x += rand(-1, 1) * shake * 0.35;
+      camera.position.y += rand(-1, 1) * shake * 0.25;
+      shake = Math.max(0, shake - dt * 2.6);
+    }
+
+    lookAtTarget.lerp(camTarget, 1 - Math.exp(-18 * dt));
+    camera.lookAt(lookAtTarget);
+  }
+
+  /* ============================================================
+     Player update
+  ============================================================ */
+  function updatePlayer(dt) {
+    if (invuln > 0) invuln -= dt;
+
+    forwardVec.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+    rightVec.set(Math.cos(yaw), 0, -Math.sin(yaw));
+
+    var ix = 0;
+    var iz = 0;
+    if (keys['KeyW'] || keys['ArrowUp']) iz += 1;
+    if (keys['KeyS'] || keys['ArrowDown']) iz -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) ix += 1;
+    if (keys['KeyA'] || keys['ArrowLeft']) ix -= 1;
+
+    ix += stickVec.x;
+    iz -= stickVec.y;
+
+    var mag = Math.hypot(ix, iz);
+    if (mag > 1) { ix /= mag; iz /= mag; mag = 1; }
+
+    wishVec.set(0, 0, 0);
+    if (mag > 0.02) {
+      wishVec.addScaledVector(forwardVec, iz);
+      wishVec.addScaledVector(rightVec, ix);
+      if (wishVec.lengthSq() > 1) wishVec.normalize();
+    }
+
+    var wantsSprint =
+      (keys['ShiftLeft'] || keys['ShiftRight'] || (isTouch && mag > 0.92)) &&
+      mag > 0.05 && stamina > 0.5;
+
+    var speed = wantsSprint ? PLAYER_SPRINT : PLAYER_WALK;
+
+    if (wantsSprint) {
+      stamina = Math.max(0, stamina - 23 * dt);
+      staminaCooldown = 0.55;
+    } else {
+      if (staminaCooldown > 0) staminaCooldown -= dt;
+      else stamina = Math.min(100, stamina + 17 * dt);
+    }
+
+    var lambda = player.onGround ? (mag > 0.02 ? 13 : 9) : 4;
+    player.vel.x = damp(player.vel.x, wishVec.x * speed, lambda, dt);
+    player.vel.z = damp(player.vel.z, wishVec.z * speed, lambda, dt);
+
+    player.root.position.x += player.vel.x * dt;
+    player.root.position.z += player.vel.z * dt;
+
+    resolveObstacles(player.root.position, 0.55);
+    clampToWorld(player.root.position);
+
+    /* jump / gravity */
+    if (jumpQueued) {
+      jumpQueued = false;
+      if (player.onGround) {
+        player.vy = 9.4;
+        player.onGround = false;
+        sfx.jump();
+      }
+    }
+
+    if (!player.onGround) {
+      player.vy -= 27 * dt;
+      player.root.position.y += player.vy * dt;
+      if (player.root.position.y <= 0) {
+        player.root.position.y = 0;
+        player.vy = 0;
+        player.onGround = true;
+      }
+    }
+
+    /* facing */
+    var planar = Math.hypot(player.vel.x, player.vel.z);
+    if (planar > 0.5) {
+      var targetRot = Math.atan2(player.vel.x, player.vel.z);
+      player.rot = angleLerp(player.rot, targetRot, 1 - Math.exp(-13 * dt));
+      player.root.rotation.y = player.rot;
+    }
+
+    /* walk cycle */
+    player.walk += dt * planar * 1.55;
+    var amp = Math.min(1, planar / 5.2);
+    var swing = Math.sin(player.walk) * 0.92 * amp;
+
+    player.arms[0].rotation.x = swing;
+    player.arms[1].rotation.x = -swing;
+    player.legs[0].rotation.x = -swing * 0.85;
+    player.legs[1].rotation.x = swing * 0.85;
+
+    if (player.onGround) {
+      player.model.position.y = Math.abs(Math.sin(player.walk)) * 0.075 * amp +
+                                 Math.sin(nowT * 2.1) * 0.012 * (1 - amp);
+      player.model.rotation.x = -0.075 * amp;
+      player.model.rotation.z = Math.sin(player.walk) * 0.035 * amp;
+    } else {
+      player.model.position.y = 0;
+      player.model.rotation.x = 0.12;
+      player.model.rotation.z = 0;
+    }
+
+    /* invulnerability blink */
+    player.model.visible = invuln > 0 ? (Math.floor(nowT * 16) % 2 === 0) : true;
+  }
+
+  function resolveObstacles(pos, radius) {
+    for (var i = 0; i < obstacles.length; i++) {
+      var o = obstacles[i];
+      var dx = pos.x - o.x;
+      var dz = pos.z - o.z;
+      var min = o.r + radius;
+      var d = Math.hypot(dx, dz);
+      if (d < min && d > 0.0001) {
+        var push = min - d;
+        pos.x += (dx / d) * push;
+        pos.z += (dz / d) * push;
+      }
+    }
+  }
+
+  function clampToWorld(pos) {
+    var d = Math.hypot(pos.x, pos.z);
+    if (d > WORLD_R) {
+      pos.x = (pos.x / d) * WORLD_R;
+      pos.z = (pos.z / d) * WORLD_R;
+    }
+  }
+
+  /* ============================================================
+     Gru update
+  ============================================================ */
+  function updateGru(dt) {
+    var dx = player.root.position.x - gru.root.position.x;
+    var dz = player.root.position.z - gru.root.position.z;
+    var dist = Math.hypot(dx, dz);
+
+    if (gru.stun > 0) {
+      gru.stun -= dt;
+      gru.coatMat.emissive.setHex(0x2f6bff);
+      gru.coatMat.emissiveIntensity = 0.55 + Math.sin(nowT * 8) * 0.2;
+      gru.alert.material.opacity = 0;
+      if (gru.stun <= 0) {
+        gru.coatMat.emissive.setHex(0x000000);
+        gru.coatMat.emissiveIntensity = 0;
+      }
+    } else {
+      gru.coatMat.emissiveIntensity = 0;
+
+      gru.speed = Math.min(GRU_MAX, gru.speed + dt * 0.052);
+
+      if (dist > 0.001) {
+        var dirX = dx / dist;
+        var dirZ = dz / dist;
+
+        /* a little wobble so he does not look robotic */
+        var wobble = Math.sin(nowT * 3.4 + 1.2) * 0.20;
+        var moveX = dirX + (-dirZ) * wobble;
+        var moveZ = dirZ + (dirX) * wobble;
+        var moveLen = Math.hypot(moveX, moveZ) || 1;
+        moveX /= moveLen;
+        moveZ /= moveLen;
+
+        gru.root.position.x += moveX * gru.speed * dt;
+        gru.root.position.z += moveZ * gru.speed * dt;
+        gru.root.position.y = 0;
+
+        resolveObstacles(gru.root.position, 0.72);
+        clampToWorld(gru.root.position);
+
+        var targetRot = Math.atan2(dirX, dirZ);
+        gru.root.rotation.y = angleLerp(gru.root.rotation.y, targetRot, 1 - Math.exp(-9 * dt));
+      }
+
+      /* alert marker */
+      var showAlert = dist < 32;
+      var pulse = 0.35 + 0.65 * Math.abs(Math.sin(nowT * 4));
+      gru.alert.material.opacity = showAlert ? pulse : 0;
+      gru.alert.position.y = 3.95 + Math.sin(nowT * 3) * 0.07;
+    }
+
+    /* animation */
+    var moving = gru.stun <= 0 ? 1 : 0;
+    gru.bob += dt * (2.2 + gru.speed * 0.9) * (moving ? 1 : 0.15);
+    var gs = Math.sin(gru.bob);
+    gru.legs[0].rotation.x = gs * 0.55 * moving;
+    gru.legs[1].rotation.x = -gs * 0.55 * moving;
+    gru.arms[0].rotation.x = -0.30 - gs * 0.35 * moving;
+    gru.arms[1].rotation.x = -0.30 + gs * 0.35 * moving;
+    gru.model.position.y = Math.abs(gs) * 0.055 * moving;
+
+    /* catch */
+    if (gru.stun <= 0 && invuln <= 0 && dist < CATCH_RADIUS) {
+      catchPlayer();
+    }
+  }
+
+  function catchPlayer() {
+    lives -= 1;
+    updateLivesHud();
+    flashDamage();
+    sfx.caught();
+    shake = 0.75;
+
+    if (lives <= 0) {
+      gameOver();
+      return;
+    }
+
+    invuln = 2.6;
+    player.vel.set(0, 0, 0);
+    gru.speed = GRU_BASE;
+
+    var pushX = gru.root.position.x - player.root.position.x;
+    var pushZ = gru.root.position.z - player.root.position.z;
+    var len = Math.hypot(pushX, pushZ);
+    if (len < 0.001) { pushX = 0; pushZ = 1; len = 1; }
+    pushX /= len;
+    pushZ /= len;
+
+    gru.root.position.x = player.root.position.x + pushX * 26;
+    gru.root.position.z = player.root.position.z + pushZ * 26;
+
+    toast('OUCH! GRU CAUGHT YOU');
+  }
+
+  /* ============================================================
+     Bananas update
+  ============================================================ */
+  function updateBananas(dt) {
+    var px = player.root.position.x;
+    var pz = player.root.position.z;
+
+    for (var i = 0; i < bananas.length; i++) {
+      var b = bananas[i];
+
+      if (!b.active) {
+        b.timer -= dt;
+        if (b.timer <= 0) respawnBanana(b);
+        continue;
+      }
+
+      b.mesh.rotation.y += dt * 1.7;
+      b.mesh.position.y = b.baseY + Math.sin(nowT * 2 + b.phase) * 0.11;
+
+      var pulse = 1 + Math.sin(nowT * 2.4 + b.phase) * 0.07;
+      b.ring.scale.setScalar(pulse);
+
+      var ddx = b.mesh.position.x - px;
+      var ddz = b.mesh.position.z - pz;
+      if (ddx * ddx + ddz * ddz < 2.2 * 2.2) {
+        collectBanana(b);
+      }
+    }
+  }
+
+  function collectBanana(b) {
+    b.active = false;
+    b.mesh.visible = false;
+    b.ring.visible = false;
+    b.timer = rand(2.5, 5.5);
+
+    burst(b.mesh.position, b.golden);
+
+    if (b.golden) {
+      score += 3;
+      gru.stun = 5.0;
+      sfx.golden();
+      sfx.freeze();
+      toast('GOLDEN BANANA! GRU IS FROZEN');
+    } else {
+      score += 1;
+      sfx.collect();
+      if (score % 10 === 0) {
+        toast(score + ' BANANAS! GRU IS GETTING FASTER');
+      }
+    }
+
+    updateScoreHud();
+    if (score > best) {
+      best = score;
+      writeBest(best);
+    }
+  }
+
+  function placeBananaAt(b, x, z) {
+    b.mesh.position.set(x, b.baseY, z);
+    b.mesh.visible = true;
+    b.mesh.rotation.set(0, rand(0, TAU), 0);
+    b.ring.position.set(x, 0.05, z);
+    b.ring.visible = true;
+    b.phase = rand(0, TAU);
+    b.active = true;
+  }
+
+  function respawnBanana(b) {
+    var spot = findSpot(16);
+    placeBananaAt(b, spot.x, spot.z);
+  }
+
+  function resetBananas() {
+    for (var i = 0; i < bananas.length; i++) {
+      var b = bananas[i];
+      b.active = false;
+      b.timer = 0.001;
+      b.mesh.visible = false;
+      b.ring.visible = false;
+      respawnBanana(b);
+    }
+    /* two easy bananas right ahead of the spawn so the first run has a clear goal */
+    if (bananas.length > 2) {
+      placeBananaAt(bananas[1], 3.5, -12);
+      placeBananaAt(bananas[2], -7.5, -16);
+    }
+  }
+
+  /* ============================================================
+     Effects
+  ============================================================ */
+  function updateParticles(dt) {
+    for (var i = particles.length - 1; i >= 0; i--) {
+      var p = particles[i];
+      var u = p.userData;
+      u.life -= dt;
+      if (u.life <= 0) {
+        scene.remove(p);
+        particles.splice(i, 1);
+        continue;
+      }
+      u.v.y -= 14 * dt;
+      p.position.addScaledVector(u.v, dt);
+      p.scale.setScalar(Math.max(0.01, u.life / u.max));
+    }
+  }
+
+  function updateClouds(dt) {
+    for (var i = 0; i < clouds.length; i++) {
+      var c = clouds[i];
+      c.position.x += dt * 0.55;
+      if (c.position.x > 300) c.position.x = -300;
+    }
+  }
+
+  /* ============================================================
+     Radar
+  ============================================================ */
+  function drawRadar() {
+    var w = radar.width;
+    var h = radar.height;
+    radarCtx.clearRect(0, 0, w, h);
+
+    if (state === 'menu') return;
+
+    var cx = w / 2;
+    var cy = h / 2;
+    var edge = cx - 3;
+    var scale = (cx - 10) / 78;
+
+    radarCtx.save();
+    radarCtx.beginPath();
+    radarCtx.arc(cx, cy, edge, 0, TAU);
+    radarCtx.fillStyle = 'rgba(8,14,20,0.55)';
+    radarCtx.fill();
+    radarCtx.strokeStyle = 'rgba(255,255,255,0.20)';
+    radarCtx.lineWidth = 1;
+    radarCtx.stroke();
+
+    radarCtx.beginPath();
+    radarCtx.arc(cx, cy, edge / 2, 0, TAU);
+    radarCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+    radarCtx.stroke();
+
+    radarCtx.beginPath();
+    radarCtx.arc(cx, cy, edge, 0, TAU);
+    radarCtx.clip();
+
+    var px = player.root.position.x;
+    var pz = player.root.position.z;
+
+    for (var i = 0; i < bananas.length; i++) {
+      var b = bananas[i];
+      if (!b.active) continue;
+      var bx = cx + (b.mesh.position.x - px) * scale;
+      var by = cy + (b.mesh.position.z - pz) * scale;
+      radarCtx.beginPath();
+      radarCtx.arc(bx, by, b.golden ? 3.2 : 2.4, 0, TAU);
+      radarCtx.fillStyle = b.golden ? '#ffb300' : '#ffe14d';
+      radarCtx.fill();
+    }
+
+    var gx = (gru.root.position.x - px) * scale;
+    var gy = (gru.root.position.z - pz) * scale;
+    var gl = Math.hypot(gx, gy);
+    var maxR = edge - 10;
+    if (gl > maxR) {
+      gx = (gx / gl) * maxR;
+      gy = (gy / gl) * maxR;
+    }
+    radarCtx.beginPath();
+    radarCtx.arc(cx + gx, cy + gy, 4.6, 0, TAU);
+    radarCtx.fillStyle = gru.stun > 0 ? '#5aa9ff' : '#ff453a';
+    radarCtx.shadowColor = radarCtx.fillStyle;
+    radarCtx.shadowBlur = 10;
+    radarCtx.fill();
+    radarCtx.shadowBlur = 0;
+
+    var ang = player.rot;
+    var dx = Math.sin(ang);
+    var dy = Math.cos(ang);
+    var tipX = cx + dx * 8;
+    var tipY = cy + dy * 8;
+    var baseX = cx - dx * 4;
+    var baseY = cy - dy * 4;
+    var perpX = -dy;
+    var perpY = dx;
+
+    radarCtx.beginPath();
+    radarCtx.moveTo(tipX, tipY);
+    radarCtx.lineTo(baseX + perpX * 4.2, baseY + perpY * 4.2);
+    radarCtx.lineTo(baseX - perpX * 4.2, baseY - perpY * 4.2);
+    radarCtx.closePath();
+    radarCtx.fillStyle = '#ffffff';
+    radarCtx.fill();
+
+    radarCtx.restore();
+  }
+
+  /* ============================================================
+     Game flow
+  ============================================================ */
+  function resetGame() {
+    score = 0;
+    lives = 3;
+    elapsed = 0;
+    stamina = 100;
+    staminaCooldown = 0;
+    invuln = 0;
+    shake = 0;
+    lastShownSecond = -1;
+
+    player.root.position.set(0, 0, 0);
+    player.root.rotation.y = Math.PI;
+    player.rot = Math.PI;
+    player.vel.set(0, 0, 0);
+    player.vy = 0;
+    player.onGround = true;
+    player.walk = 0;
+    player.model.visible = true;
+
+    gru.root.position.set(0, 0, -62);
+    gru.root.rotation.y = 0;
+    gru.speed = GRU_BASE;
+    gru.stun = 0;
+    gru.coatMat.emissive.setHex(0x000000);
+    gru.coatMat.emissiveIntensity = 0;
+    gru.alert.material.opacity = 0;
+    gru.bob = 0;
+
+    yaw = 0;
+    pitch = 0.24;
+    camDist = 8.2;
+    camTarget.set(0, 1.75, 0);
+    lookAtTarget.copy(camTarget);
+    camPos.set(
+      Math.sin(yaw) * Math.cos(pitch) * camDist,
+      1.75 + Math.sin(pitch) * camDist,
+      Math.cos(yaw) * Math.cos(pitch) * camDist
+    );
+
+    resetBananas();
+
+    updateScoreHud();
+    updateLivesHud();
+    timerEl.textContent = '0:00';
+    staminaEl.style.width = '100%';
+    dangerEl.style.width = '0%';
+    warnEl.classList.remove('show');
+    toastEl.classList.remove('show');
+    toastTimer = 0;
+  }
+
+  function startGame() {
+    audio();
+    hideScreen(startScreen);
+    hideScreen(pauseScreen);
+    hideScreen(overScreen);
+    loadingScreen.classList.add('hidden');
+
+    resetGame();
+    state = 'playing';
+    hud.classList.add('on');
+    sfx.start();
+
+    if (!isTouch) requestLock();
+  }
+
+  function pauseGame() {
+    if (state !== 'playing') return;
+    state = 'paused';
+    showScreen(pauseScreen);
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+
+  function resumeGame() {
+    if (state !== 'paused') return;
+    hideScreen(pauseScreen);
+    state = 'playing';
+    if (!isTouch) requestLock();
+  }
+
+  function gameOver() {
+    state = 'over';
+    if (score > best) {
+      best = score;
+      writeBest(best);
+    }
+    finalScoreEl.textContent = score;
+    finalTimeEl.textContent = formatTime(elapsed);
+    bestOverEl.textContent = best;
+    bestStartEl.textContent = best;
+    showScreen(overScreen);
+    hud.classList.remove('on');
+    warnEl.classList.remove('show');
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+
+  document.getElementById('playBtn').addEventListener('click', startGame);
+  document.getElementById('againBtn').addEventListener('click', startGame);
+  document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+  document.getElementById('restartBtnPause').addEventListener('click', startGame);
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && state === 'playing') pauseGame();
+  });
+
+  window.addEventListener('resize', function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+  });
+
+  /* ============================================================
+     Main loop
+  ============================================================ */
+  var lastFrame = performance.now();
+
+  function loop(now) {
+    window.requestAnimationFrame(loop);
+
+    var dt = Math.min(0.05, Math.max(0.0001, (now - lastFrame) / 1000));
+    lastFrame = now;
+    nowT += dt;
+
+    if (state === 'playing') {
+      elapsed += dt;
+      updatePlayer(dt);
+      updateGru(dt);
+      updateBananas(dt);
+      updateHud(dt);
+
+      sun.position.set(
+        player.root.position.x + 46,
+        80,
+        player.root.position.z + 8
+      );
+      sun.target.position.set(player.root.position.x, 0, player.root.position.z);
+      sun.target.updateMatrixWorld();
+    }
+
+    updateParticles(dt);
+    updateClouds(dt);
+    updateCamera(dt);
+    drawRadar();
+
+    renderer.render(scene, camera);
+  }
+
+  /* debug hook (harmless in production, useful for QA) */
+  window.__minionRun = {
+    player: player,
+    gru: gru,
+    camera: camera,
+    scene: scene,
+    sun: sun,
+    renderer: renderer,
+    bananas: bananas,
+    getState: function () { return state; },
+    getScore: function () { return score; },
+    getLives: function () { return lives; },
+    setLives: function (v) { lives = v; updateLivesHud(); },
+    setInvuln: function (v) { invuln = v; },
+    start: startGame
+  };
+
+  /* boot */
+  updateLivesHud();
+  updateScoreHud();
+  hintEl.textContent = isTouch
+    ? 'JOYSTICK MOVE \u00B7 DRAG TO LOOK \u00B7 TAP JUMP'
+    : 'WASD MOVE \u00B7 SHIFT SPRINT \u00B7 SPACE JUMP \u00B7 MOUSE LOOK \u00B7 ESC PAUSE \u00B7 M MUTE';
+
+  loadingScreen.classList.add('hidden');
+  camPos.set(0, 7, 14);
+  camera.position.copy(camPos);
+
+  window.requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

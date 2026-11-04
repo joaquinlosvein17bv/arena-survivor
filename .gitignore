@@ -49,3 +49,5 @@ temp/
 # ── Git itself ────────────────────────────────
 # No subir historial anidado accidentalmente
 .git/
+# Vendor local: three.js para minion-run (necesario en runtime, no es build output)
+!minion-run/three.min.js
