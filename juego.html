@@ -83,7 +83,7 @@ canvas {
 }
 #startScreen h1 { font-size: min(50px,8vw); color: #ff6600; text-shadow: 0 0 30px rgba(255,100,0,0.6); }
 #startScreen p { font-size: min(18px,3vw); margin: 8px 0; opacity: 0.7; }
-#startScreen .flash { animation: pulse 1.2s ease-in-out infinite; margin-top: 30px; font-size: min(20px,3.5vw); color: #ff6600; pointer-events: auto; cursor: pointer; }
+#startScreen .flash { animation: pulse 1.2s ease-in-out infinite; margin-top: 30px; font-size: min(20px,3.5vw); color: #ff6600; pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 24px; border-radius: 999px; }
 #startScreen .flash:hover { text-shadow: 0 0 20px #ff6600; }
 @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
 #levelUp {
@@ -1041,6 +1041,8 @@ const JOYSTICK_DEAD_ZONE = 8; // px threshold to prevent drift
 if (isTouchDevice) {
   document.querySelector('.controls-desktop').style.display = 'none';
   document.querySelector('.controls-touch').style.display = '';
+  const flashEl = document.querySelector('#startScreen .flash');
+  if (flashEl) flashEl.textContent = '[ TOCÁ PARA EMPEZAR ]';
 }
 
 // --- Joystick ---
