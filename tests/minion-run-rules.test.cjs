@@ -93,3 +93,22 @@ test('gadget controls are exposed for keyboard and touch', () => {
     touchLabel: 'GADGET'
   });
 });
+
+test('each milestone has one cinematic message and duration', () => {
+  assert.deepEqual(rules.milestonePresentation(5), {
+    title: 'GRU IS FASTER',
+    subtitle: 'Keep moving!',
+    duration: 1.2
+  });
+  assert.deepEqual(rules.milestonePresentation(10), {
+    title: 'PURPLE MINIONS INCOMING',
+    subtitle: 'They can slow you down.',
+    duration: 1.45
+  });
+  assert.deepEqual(rules.milestonePresentation(15), {
+    title: 'EL MACHO HAS ARRIVED',
+    subtitle: 'Final chase!',
+    duration: 1.7
+  });
+  assert.equal(rules.milestonePresentation(7), null);
+});

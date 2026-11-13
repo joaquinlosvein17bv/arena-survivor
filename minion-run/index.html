@@ -151,6 +151,23 @@
   }
   .toast.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
 
+  .milestone-cinematic{
+    position:absolute; left:50%; top:42%; transform:translate(-50%,-50%) scale(.82);
+    min-width:min(560px,calc(100vw - 36px)); padding:20px 26px; text-align:center;
+    border:1px solid rgba(255,217,59,.38); border-radius:20px;
+    background:linear-gradient(180deg,rgba(20,24,34,.88),rgba(7,10,16,.80));
+    box-shadow:0 18px 50px rgba(0,0,0,.48),0 0 42px rgba(255,196,0,.13);
+    opacity:0; transition:opacity .16s ease,transform .16s ease;
+  }
+  .milestone-cinematic.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+  .milestone-cinematic b{
+    display:block; color:var(--yellow); font-size:clamp(23px,5vw,42px); font-weight:900;
+    letter-spacing:1.4px; text-shadow:0 4px 18px rgba(0,0,0,.72);
+  }
+  .milestone-cinematic span{
+    display:block; margin-top:5px; color:rgba(255,255,255,.78); font-size:14px; letter-spacing:1px;
+  }
+
   /* ---------------- Screens ---------------- */
   .screen{
     position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center;
@@ -287,6 +304,10 @@
 
   <div id="warn" class="warn">GRU IS RIGHT BEHIND YOU!</div>
   <div id="toast" class="toast"></div>
+  <div id="milestoneCinematic" class="milestone-cinematic" role="status" aria-live="polite">
+    <b id="milestoneTitle"></b>
+    <span id="milestoneSubtitle"></span>
+  </div>
   <div class="hint" id="hint">WASD MOVE &middot; SHIFT SPRINT &middot; SPACE JUMP &middot; E GADGET &middot; MOUSE LOOK &middot; ESC PAUSE &middot; M MUTE</div>
 </div>
 
@@ -410,6 +431,9 @@
   var dangerEl = document.getElementById('danger');
   var warnEl = document.getElementById('warn');
   var toastEl = document.getElementById('toast');
+  var milestoneCinematicEl = document.getElementById('milestoneCinematic');
+  var milestoneTitleEl = document.getElementById('milestoneTitle');
+  var milestoneSubtitleEl = document.getElementById('milestoneSubtitle');
   var hintEl = document.getElementById('hint');
   var damageEl = document.getElementById('damage');
   var startScreen = document.getElementById('startScreen');
@@ -1379,6 +1403,9 @@
   var nowT = 0;
   var lastShownSecond = -1;
   var toastTimer = 0;
+  var cinematicTimer = 0;
+  var activeMilestone = null;
+  var lastMilestoneSound = 0;
   var best = readBest();
 
   function readBest() {
@@ -1637,6 +1664,21 @@
       tone(230, 0.22, 'triangle', 0.05, 260);
       tone(180, 0.34, 'sawtooth', 0.032, -50, 0.08);
     },
+    milestone: function (milestone) {
+      lastMilestoneSound = milestone;
+      if (milestone === 5) {
+        tone(260, 0.18, 'square', 0.04, 180);
+        tone(520, 0.24, 'triangle', 0.045, 220, 0.12);
+      } else if (milestone === 10) {
+        tone(180, 0.16, 'sawtooth', 0.045, 120);
+        tone(260, 0.20, 'square', 0.04, -80, 0.12);
+        tone(360, 0.22, 'triangle', 0.045, 140, 0.24);
+      } else if (milestone === 15) {
+        tone(90, 0.42, 'sawtooth', 0.07, -28);
+        tone(180, 0.32, 'square', 0.05, 160, 0.18);
+        tone(420, 0.36, 'triangle', 0.055, 220, 0.38);
+      }
+    },
     start: function () {
       tone(520, 0.10, 'triangle', 0.05);
       tone(780, 0.10, 'triangle', 0.05, 0, 0.10);
@@ -1862,6 +1904,25 @@
   function flashDamage() {
     damageEl.classList.add('on');
     window.setTimeout(function () { damageEl.classList.remove('on'); }, 190);
+  }
+  function playMilestonePresentation(milestone) {
+    var presentation = gameRules.milestonePresentation(milestone);
+    if (!presentation) return;
+    activeMilestone = milestone;
+    cinematicTimer = presentation.duration;
+    milestoneTitleEl.textContent = presentation.title;
+    milestoneSubtitleEl.textContent = presentation.subtitle;
+    milestoneCinematicEl.classList.add('show');
+    sfx.milestone(milestone);
+  }
+  function updateMilestonePresentation(dt) {
+    if (cinematicTimer <= 0) return;
+    cinematicTimer -= dt;
+    if (cinematicTimer <= 0) {
+      cinematicTimer = 0;
+      activeMilestone = null;
+      milestoneCinematicEl.classList.remove('show');
+    }
   }
   function showScreen(el) { el.classList.remove('hidden'); }
   function hideScreen(el) { el.classList.add('hidden'); }
@@ -2249,15 +2310,12 @@
       if (triggeredMilestones.includes(milestone)) continue;
       triggeredMilestones.push(milestone);
 
-      if (milestone === 5) {
-        toast('5 BANANAS! GRU IS FASTER');
-      } else if (milestone === 10) {
+      if (milestone === 10) {
         spawnPurpleMinions();
-        toast('10 BANANAS! PURPLE MINIONS INCOMING');
       } else if (milestone === 15) {
         setGruForm(gameRules.gruFormForScore(currentScore));
-        toast('15 BANANAS! EL MACHO HAS ARRIVED');
       }
+      playMilestonePresentation(milestone);
     }
   }
 
@@ -2509,6 +2567,10 @@
     warnEl.classList.remove('show');
     toastEl.classList.remove('show');
     toastTimer = 0;
+    cinematicTimer = 0;
+    activeMilestone = null;
+    lastMilestoneSound = 0;
+    milestoneCinematicEl.classList.remove('show');
   }
 
   function startGame() {
@@ -2595,13 +2657,16 @@
     lastFrame = now;
     nowT += dt;
 
+    updateMilestonePresentation(dt);
+
     if (state === 'playing') {
-      elapsed += dt;
-      updatePlayer(dt);
-      updateGru(dt);
-      updatePurpleMinions(dt);
-      updateBananas(dt);
-      updateHud(dt);
+      var gameplayDt = cinematicTimer > 0 ? dt * 0.35 : dt;
+      elapsed += gameplayDt;
+      updatePlayer(gameplayDt);
+      updateGru(gameplayDt);
+      updatePurpleMinions(gameplayDt);
+      updateBananas(gameplayDt);
+      updateHud(gameplayDt);
 
       sun.position.set(
         player.root.position.x + 46,
@@ -2634,11 +2699,20 @@
     getState: function () { return state; },
     getScore: function () { return score; },
     getLives: function () { return lives; },
+    getElapsed: function () { return elapsed; },
     getGoal: function () { return gameRules.BANANA_GOAL; },
     getStage: function () { return currentStage; },
     getGruForm: function () { return gru.form; },
     getPurpleMinionCount: function () { return purpleMinions.length; },
     getPlayerSlow: function () { return playerSlow; },
+    getCinematic: function () {
+      return {
+        milestone: activeMilestone,
+        remaining: cinematicTimer,
+        lastSound: lastMilestoneSound,
+        visible: milestoneCinematicEl.classList.contains('show')
+      };
+    },
     getHeldPower: function () {
       return heldPower ? { type: heldPower.type, charges: heldPower.charges } : null;
     },

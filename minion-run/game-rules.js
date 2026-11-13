@@ -26,6 +26,11 @@
     keyboardCode: 'KeyE',
     touchLabel: 'GADGET'
   };
+  var MILESTONE_PRESENTATIONS = {
+    5: { title: 'GRU IS FASTER', subtitle: 'Keep moving!', duration: 1.2 },
+    10: { title: 'PURPLE MINIONS INCOMING', subtitle: 'They can slow you down.', duration: 1.45 },
+    15: { title: 'EL MACHO HAS ARRIVED', subtitle: 'Final chase!', duration: 1.7 }
+  };
   var GRU_BASE_SPEED = 4.2;
   var GRU_ANGRY_SPEED = 5.0;
   var EL_MACHO_SPEED = 6.2;
@@ -84,6 +89,11 @@
     return Object.assign({}, effect);
   }
 
+  function milestonePresentation(milestone) {
+    var presentation = MILESTONE_PRESENTATIONS[milestone];
+    return presentation ? Object.assign({}, presentation) : null;
+  }
+
   return {
     BANANA_GOAL: BANANA_GOAL,
     MILESTONES: MILESTONES.slice(),
@@ -103,6 +113,7 @@
     progressPercent: progressPercent,
     powerForRoll: powerForRoll,
     createPowerPickup: createPowerPickup,
-    powerEffect: powerEffect
+    powerEffect: powerEffect,
+    milestonePresentation: milestonePresentation
   };
 });
