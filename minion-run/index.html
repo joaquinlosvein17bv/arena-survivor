@@ -231,7 +231,7 @@
   <div class="panel">
     <div class="badge">GRU IS LOOKING FOR YOU</div>
     <h1>MINION<br><span>RUN</span></h1>
-    <p class="lead">An open world full of bananas, and one very angry Gru. Grab bananas, keep your distance, and never stop moving.</p>
+    <p class="lead">Collect <b>20 bananas</b> before Gru catches you. Keep your distance, use golden bananas, and never stop moving.</p>
     <div class="keys">
       <div><kbd>WASD</kbd> Move</div>
       <div><kbd>MOUSE</kbd> Look around</div>
@@ -265,6 +265,15 @@
   </div>
 </div>
 
+<div id="winScreen" class="screen hidden">
+  <div class="panel">
+    <div class="badge">ESCAPE COMPLETE</div>
+    <h2>YOU GOT THE BANANAS!</h2>
+    <p class="lead">You collected all <b>20 bananas</b> and escaped from Gru.</p>
+    <button id="winAgainBtn" class="btn" type="button">RUN AGAIN</button>
+  </div>
+</div>
+
 <div id="loading" class="screen">
   <div class="panel">
     <div class="badge">MINION RUN</div>
@@ -274,6 +283,7 @@
 </div>
 
 <script src="three.min.js"></script>
+<script src="game-rules.js"></script>
 <script>
 (function () {
   'use strict';
@@ -284,9 +294,24 @@
   var loadingScreen = document.getElementById('loading');
 
   function fatal(message) {
-    loadingScreen.innerHTML =
-      '<div class="panel"><div class="badge red">OOPS</div><h2>CANNOT START</h2>' +
-      '<p class="fatal">' + message + '</p></div>';
+    var panel = document.createElement('div');
+    panel.className = 'panel';
+
+    var badge = document.createElement('div');
+    badge.className = 'badge red';
+    badge.textContent = 'OOPS';
+
+    var title = document.createElement('h2');
+    title.textContent = 'CANNOT START';
+
+    var detail = document.createElement('p');
+    detail.className = 'fatal';
+    detail.textContent = message;
+
+    panel.appendChild(badge);
+    panel.appendChild(title);
+    panel.appendChild(detail);
+    loadingScreen.replaceChildren(panel);
     loadingScreen.classList.remove('hidden');
   }
 
@@ -295,6 +320,12 @@
     return;
   }
 
+  if (!window.MinionRunRules) {
+    fatal('game-rules.js was not found. Keep it in the same folder as index.html and open the game again.');
+    return;
+  }
+
+  var gameRules = window.MinionRunRules;
   var canvas = document.getElementById('game');
   var hud = document.getElementById('hud');
   var scoreEl = document.getElementById('score');
@@ -309,6 +340,7 @@
   var startScreen = document.getElementById('startScreen');
   var pauseScreen = document.getElementById('pauseScreen');
   var overScreen = document.getElementById('overScreen');
+  var winScreen = document.getElementById('winScreen');
   var bestStartEl = document.getElementById('bestStart');
   var bestOverEl = document.getElementById('bestOver');
   var finalScoreEl = document.getElementById('finalScore');
@@ -1368,7 +1400,7 @@
   function updateCamera(dt) {
     sky.position.copy(camera.position);
 
-    if (state === 'menu' || state === 'over') {
+    if (state === 'menu' || state === 'over' || state === 'won') {
       var orbitT = nowT * (state === 'menu' ? 0.14 : 0.20);
       var center = player.root.position;
       var radius = state === 'menu' ? 14 : 9;
@@ -1459,7 +1491,8 @@
       else stamina = Math.min(100, stamina + 17 * dt);
     }
 
-    var lambda = player.onGround ? (mag > 0.02 ? 13 : 9) : 4;
+    var lambda = 4;
+    if (player.onGround) lambda = mag > 0.02 ? 13 : 9;
     player.vel.x = damp(player.vel.x, wishVec.x * speed, lambda, dt);
     player.vel.z = damp(player.vel.z, wishVec.z * speed, lambda, dt);
 
@@ -1680,24 +1713,25 @@
 
     burst(b.mesh.position, b.golden);
 
+    score += 1;
+
     if (b.golden) {
-      score += 3;
       gru.stun = 5.0;
       sfx.golden();
       sfx.freeze();
       toast('GOLDEN BANANA! GRU IS FROZEN');
     } else {
-      score += 1;
       sfx.collect();
-      if (score % 10 === 0) {
-        toast(score + ' BANANAS! GRU IS GETTING FASTER');
-      }
     }
 
     updateScoreHud();
     if (score > best) {
       best = score;
       writeBest(best);
+    }
+
+    if (gameRules.hasWon(score)) {
+      winGame();
     }
   }
 
@@ -1902,6 +1936,7 @@
     hideScreen(startScreen);
     hideScreen(pauseScreen);
     hideScreen(overScreen);
+    hideScreen(winScreen);
     loadingScreen.classList.add('hidden');
 
     resetGame();
@@ -1942,8 +1977,18 @@
     if (document.pointerLockElement) document.exitPointerLock();
   }
 
+  function winGame() {
+    if (state !== 'playing') return;
+    state = 'won';
+    showScreen(winScreen);
+    hud.classList.remove('on');
+    warnEl.classList.remove('show');
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+
   document.getElementById('playBtn').addEventListener('click', startGame);
   document.getElementById('againBtn').addEventListener('click', startGame);
+  document.getElementById('winAgainBtn').addEventListener('click', startGame);
   document.getElementById('resumeBtn').addEventListener('click', resumeGame);
   document.getElementById('restartBtnPause').addEventListener('click', startGame);
 
@@ -2006,6 +2051,9 @@
     getState: function () { return state; },
     getScore: function () { return score; },
     getLives: function () { return lives; },
+    getGoal: function () { return gameRules.BANANA_GOAL; },
+    setScore: function (v) { score = v; updateScoreHud(); },
+    collectBanana: collectBanana,
     setLives: function (v) { lives = v; updateLivesHud(); },
     setInvuln: function (v) { invuln = v; },
     start: startGame
