@@ -78,3 +78,18 @@ test('the fart gun defines a close push and confusion cloud', () => {
     duration: 3
   });
 });
+
+test('the tentacle gun roots the nearest forward pursuer', () => {
+  assert.deepEqual(rules.powerEffect('tentacle'), {
+    range: 28,
+    coneDot: 0.65,
+    duration: 5
+  });
+});
+
+test('gadget controls are exposed for keyboard and touch', () => {
+  assert.deepEqual(rules.POWER_CONTROLS, {
+    keyboardCode: 'KeyE',
+    touchLabel: 'GADGET'
+  });
+});

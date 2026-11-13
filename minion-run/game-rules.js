@@ -19,7 +19,12 @@
   var POWER_TYPES = ['freeze', 'fart', 'tentacle'];
   var POWER_EFFECTS = {
     freeze: { range: 34, coneDot: 0.45, duration: 4 },
-    fart: { radius: 14, push: 10, duration: 3 }
+    fart: { radius: 14, push: 10, duration: 3 },
+    tentacle: { range: 28, coneDot: 0.65, duration: 5 }
+  };
+  var POWER_CONTROLS = {
+    keyboardCode: 'KeyE',
+    touchLabel: 'GADGET'
   };
   var GRU_BASE_SPEED = 4.2;
   var GRU_ANGRY_SPEED = 5.0;
@@ -84,6 +89,7 @@
     MILESTONES: MILESTONES.slice(),
     PROGRESS_MARKERS: PROGRESS_MARKERS.slice(),
     POWER_TYPES: POWER_TYPES.slice(),
+    POWER_CONTROLS: Object.assign({}, POWER_CONTROLS),
     GRU_BASE_SPEED: GRU_BASE_SPEED,
     GRU_ANGRY_SPEED: GRU_ANGRY_SPEED,
     EL_MACHO_SPEED: EL_MACHO_SPEED,

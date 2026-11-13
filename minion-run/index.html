@@ -226,19 +226,25 @@
     margin:-29px 0 0 -29px; border-radius:50%;
     background:rgba(255,255,255,.78); box-shadow:0 6px 18px rgba(0,0,0,.45);
   }
-  .jumpBtn{
-    position:absolute; right:24px; bottom:48px; width:90px; height:90px; border-radius:50%;
+  .jumpBtn,
+  .powerBtn{
+    position:absolute; right:24px; width:90px; height:90px; border-radius:50%;
     border:2px solid rgba(255,255,255,.28); background:rgba(255,217,59,.92);
     color:#141414; font-family:inherit; font-weight:900; font-size:12px; letter-spacing:1.5px;
     pointer-events:auto; touch-action:none; box-shadow:0 10px 26px rgba(0,0,0,.4);
   }
-  .jumpBtn:active{ transform:scale(.94); }
+  .jumpBtn{ bottom:48px; }
+  .powerBtn{ bottom:150px; background:rgba(112,214,255,.82); opacity:.45; }
+  .powerBtn.ready{ opacity:1; box-shadow:0 10px 26px rgba(112,214,255,.35); }
+  .powerBtn:disabled{ pointer-events:none; }
+  .jumpBtn:active,
+  .powerBtn:active{ transform:scale(.94); }
 
   .fatal{ max-width:520px; margin:0 auto; line-height:1.6; color:rgba(255,255,255,.8); }
 
   @media (max-width:640px){
     .objective{ top:66px; width:220px; }
-    .power-chip{ right:18px; bottom:156px; min-width:154px; }
+    .power-chip{ right:124px; bottom:160px; min-width:154px; }
     #radar{ width:126px; height:126px; }
   }
 </style>
@@ -281,12 +287,13 @@
 
   <div id="warn" class="warn">GRU IS RIGHT BEHIND YOU!</div>
   <div id="toast" class="toast"></div>
-  <div class="hint" id="hint">WASD MOVE &middot; SHIFT SPRINT &middot; SPACE JUMP &middot; MOUSE LOOK &middot; ESC PAUSE &middot; M MUTE</div>
+  <div class="hint" id="hint">WASD MOVE &middot; SHIFT SPRINT &middot; SPACE JUMP &middot; E GADGET &middot; MOUSE LOOK &middot; ESC PAUSE &middot; M MUTE</div>
 </div>
 
 <div id="touch" class="touch hidden">
-  <div id="stick" class="stick"><div id="knob" class="knob"></div></div>
-  <button id="jumpBtn" class="jumpBtn" type="button">JUMP</button>
+<div id="stick" class="stick"><div id="knob" class="knob"></div></div>
+<button id="powerBtn" class="powerBtn" type="button" disabled>GADGET</button>
+<button id="jumpBtn" class="jumpBtn" type="button">JUMP</button>
 </div>
 
 <div id="startScreen" class="screen">
@@ -299,6 +306,7 @@
       <div><kbd>MOUSE</kbd> Look around</div>
       <div><kbd>SHIFT</kbd> Sprint</div>
       <div><kbd>SPACE</kbd> Jump</div>
+      <div><kbd>E</kbd> Use gadget</div>
       <div><kbd>ESC</kbd> Pause</div>
       <div><kbd>M</kbd> Mute</div>
     </div>
@@ -1290,6 +1298,7 @@
     speed: 4.2,
     bob: 0,
     stun: 0,
+    rooted: 0,
     confused: 0,
     form: 'gru',
     machoGroup: null
@@ -1416,6 +1425,7 @@
       e.preventDefault();
     }
     if (e.code === 'Space') jumpQueued = true;
+    if (e.code === gameRules.POWER_CONTROLS.keyboardCode && !e.repeat) activateHeldPower();
     if (e.code === 'Escape') {
       if (state === 'playing') pauseGame();
       else if (state === 'paused') resumeGame();
@@ -1540,6 +1550,13 @@
   stickEl.addEventListener('pointerup', stickEnd);
   stickEl.addEventListener('pointercancel', stickEnd);
 
+  var powerBtn = document.getElementById('powerBtn');
+  powerBtn.textContent = gameRules.POWER_CONTROLS.touchLabel;
+  powerBtn.addEventListener('pointerdown', function (e) {
+    e.preventDefault();
+    activateHeldPower();
+  });
+
   var jumpBtn = document.getElementById('jumpBtn');
   jumpBtn.addEventListener('pointerdown', function (e) {
     e.preventDefault();
@@ -1548,7 +1565,7 @@
 
   if (isTouch) {
     touchLayer.classList.remove('hidden');
-    hintEl.textContent = 'JOYSTICK MOVE \u00B7 DRAG TO LOOK \u00B7 TAP JUMP';
+    hintEl.textContent = 'JOYSTICK MOVE \u00B7 DRAG TO LOOK \u00B7 TAP JUMP \u00B7 TAP GADGET';
     document.querySelector('.keys').style.display = 'none';
   }
 
@@ -1616,6 +1633,10 @@
       tone(95, 0.34, 'sawtooth', 0.055, -38);
       tone(72, 0.42, 'square', 0.035, -24, 0.08);
     },
+    tentacle: function () {
+      tone(230, 0.22, 'triangle', 0.05, 260);
+      tone(180, 0.34, 'sawtooth', 0.032, -50, 0.08);
+    },
     start: function () {
       tone(520, 0.10, 'triangle', 0.05);
       tone(780, 0.10, 'triangle', 0.05, 0, 0.10);
@@ -1647,6 +1668,10 @@
     var isReady = heldPower && heldPower.charges > 0;
     powerChipEl.classList.toggle('ready', Boolean(isReady));
     powerNameEl.textContent = isReady ? labels[heldPower.type] + ' x' + heldPower.charges : 'NONE';
+    if (powerBtn) {
+      powerBtn.disabled = !isReady;
+      powerBtn.classList.toggle('ready', Boolean(isReady));
+    }
   }
   function grantPower(type) {
     heldPower = gameRules.createPowerPickup(type);
@@ -1756,12 +1781,66 @@
     return true;
   }
 
+  function spawnTentacleVisual(targetRoot) {
+    var start = new THREE.Vector3(
+      player.root.position.x,
+      player.root.position.y + 1.15,
+      player.root.position.z
+    );
+    var end = new THREE.Vector3(targetRoot.position.x, targetRoot.position.y + 1.15, targetRoot.position.z);
+    var direction = end.clone().sub(start);
+    var length = direction.length();
+    var material = new THREE.MeshBasicMaterial({
+      color: 0xb15cff,
+      transparent: true,
+      opacity: 0.82,
+      depthWrite: false
+    });
+    var tentacle = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.16, length, 8), material);
+    tentacle.position.copy(start).add(end).multiplyScalar(0.5);
+    tentacle.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+    scene.add(tentacle);
+    powerVisuals.push({ mesh: tentacle, life: 0.82, maxLife: 0.82, kind: 'tentacle' });
+  }
+
+  function useTentacleGun() {
+    var effect = gameRules.powerEffect('tentacle');
+    var targets = pursuerTargets();
+    var nearest = null;
+    var nearestDistance = Infinity;
+
+    for (var i = 0; i < targets.length; i++) {
+      var target = targets[i];
+      if (!targetInFront(target.root, effect.range, effect.coneDot)) continue;
+      var distance = Math.hypot(
+        target.root.position.x - player.root.position.x,
+        target.root.position.z - player.root.position.z
+      );
+      if (distance < nearestDistance) {
+        nearest = target;
+        nearestDistance = distance;
+      }
+    }
+
+    if (!nearest) {
+      toast('NO TENTACLE TARGET');
+      return false;
+    }
+
+    nearest.actor.rooted = Math.max(nearest.actor.rooted || 0, effect.duration);
+    spawnTentacleVisual(nearest.root);
+    sfx.tentacle();
+    toast('TENTACLE LOCKED');
+    return true;
+  }
+
   function activateHeldPower() {
     if (state !== 'playing' || !heldPower || heldPower.charges <= 0) return false;
 
     var used = false;
     if (heldPower.type === 'freeze') used = useFreezeRay();
     else if (heldPower.type === 'fart') used = useFartGun();
+    else if (heldPower.type === 'tentacle') used = useTentacleGun();
 
     if (!used) return false;
     heldPower.charges -= 1;
@@ -2009,12 +2088,13 @@
     var dz = player.root.position.z - gru.root.position.z;
     var dist = Math.hypot(dx, dz);
 
-    if (gru.stun > 0) {
-      gru.stun -= dt;
-      gru.coatMat.emissive.setHex(0x2f6bff);
+    if (gru.stun > 0 || gru.rooted > 0) {
+      if (gru.stun > 0) gru.stun -= dt;
+      if (gru.rooted > 0) gru.rooted -= dt;
+      gru.coatMat.emissive.setHex(gru.rooted > 0 ? 0x8a2be2 : 0x2f6bff);
       gru.coatMat.emissiveIntensity = 0.55 + Math.sin(nowT * 8) * 0.2;
       gru.alert.material.opacity = 0;
-      if (gru.stun <= 0) {
+      if (gru.stun <= 0 && gru.rooted <= 0) {
         gru.coatMat.emissive.setHex(0x000000);
         gru.coatMat.emissiveIntensity = 0;
       }
@@ -2055,7 +2135,7 @@
     }
 
     /* animation */
-    var moving = gru.stun <= 0 ? 1 : 0;
+    var moving = gru.stun <= 0 && gru.rooted <= 0 ? 1 : 0;
     gru.bob += dt * (2.2 + gru.speed * 0.9) * (moving ? 1 : 0.15);
     var gs = Math.sin(gru.bob);
     gru.legs[0].rotation.x = gs * 0.55 * moving;
@@ -2065,7 +2145,7 @@
     gru.model.position.y = Math.abs(gs) * 0.055 * moving;
 
     /* catch */
-    if (gru.stun <= 0 && invuln <= 0 && dist < CATCH_RADIUS) {
+    if (gru.stun <= 0 && gru.rooted <= 0 && invuln <= 0 && dist < CATCH_RADIUS) {
       catchPlayer();
     }
   }
@@ -2247,6 +2327,9 @@
       visual.mesh.material.opacity = (1 - progress) * (visual.kind === 'beam' ? 0.72 : 0.34);
       if (visual.kind === 'cloud') {
         visual.mesh.scale.setScalar(1.4 + progress * visual.radius);
+      } else if (visual.kind === 'tentacle') {
+        visual.mesh.scale.x = 1 + Math.sin(progress * Math.PI * 6) * 0.28;
+        visual.mesh.scale.z = visual.mesh.scale.x;
       } else {
         visual.mesh.scale.y = 1 + progress * 3;
       }
@@ -2396,6 +2479,7 @@
     gru.root.rotation.y = 0;
     gru.speed = GRU_BASE;
     gru.stun = 0;
+    gru.rooted = 0;
     gru.confused = 0;
     gru.coatMat.emissive.setHex(0x000000);
     gru.coatMat.emissiveIntensity = 0;
@@ -2579,8 +2663,8 @@
   updateScoreHud();
   updatePowerHud();
   hintEl.textContent = isTouch
-    ? 'JOYSTICK MOVE \u00B7 DRAG TO LOOK \u00B7 TAP JUMP'
-    : 'WASD MOVE \u00B7 SHIFT SPRINT \u00B7 SPACE JUMP \u00B7 MOUSE LOOK \u00B7 ESC PAUSE \u00B7 M MUTE';
+    ? 'JOYSTICK MOVE \u00B7 DRAG TO LOOK \u00B7 TAP JUMP \u00B7 TAP GADGET'
+    : 'WASD MOVE \u00B7 SHIFT SPRINT \u00B7 SPACE JUMP \u00B7 E GADGET \u00B7 MOUSE LOOK \u00B7 ESC PAUSE \u00B7 M MUTE';
 
   loadingScreen.classList.add('hidden');
   camPos.set(0, 7, 14);
