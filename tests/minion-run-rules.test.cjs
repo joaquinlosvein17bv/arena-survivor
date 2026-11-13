@@ -35,3 +35,15 @@ test('Gru becomes faster when the player reaches five bananas', () => {
   assert.ok(rules.gruSpeedForScore(5) > rules.gruSpeedForScore(4));
   assert.equal(rules.gruSpeedForScore(5), 5);
 });
+
+test('two purple minions join the chase at ten bananas', () => {
+  assert.equal(rules.purpleMinionCountForScore(9), 0);
+  assert.equal(rules.purpleMinionCountForScore(10), 2);
+  assert.equal(rules.purpleMinionCountForScore(20), 2);
+});
+
+test('Gru changes to the El Macho form at fifteen bananas', () => {
+  assert.equal(rules.gruFormForScore(14), 'gru');
+  assert.equal(rules.gruFormForScore(15), 'el-macho');
+  assert.ok(rules.gruSpeedForScore(15) > rules.gruSpeedForScore(10));
+});

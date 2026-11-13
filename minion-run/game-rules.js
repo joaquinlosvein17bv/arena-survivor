@@ -17,6 +17,8 @@
   var MILESTONES = [5, 10, 15];
   var GRU_BASE_SPEED = 4.2;
   var GRU_ANGRY_SPEED = 5.0;
+  var EL_MACHO_SPEED = 6.2;
+  var PURPLE_MINION_COUNT = 2;
 
   function hasWon(collectedBananas) {
     return collectedBananas >= BANANA_GOAL;
@@ -36,7 +38,16 @@
   }
 
   function gruSpeedForScore(collectedBananas) {
+    if (collectedBananas >= 15) return EL_MACHO_SPEED;
     return collectedBananas >= 5 ? GRU_ANGRY_SPEED : GRU_BASE_SPEED;
+  }
+
+  function purpleMinionCountForScore(collectedBananas) {
+    return collectedBananas >= 10 ? PURPLE_MINION_COUNT : 0;
+  }
+
+  function gruFormForScore(collectedBananas) {
+    return collectedBananas >= 15 ? 'el-macho' : 'gru';
   }
 
   return {
@@ -44,9 +55,13 @@
     MILESTONES: MILESTONES.slice(),
     GRU_BASE_SPEED: GRU_BASE_SPEED,
     GRU_ANGRY_SPEED: GRU_ANGRY_SPEED,
+    EL_MACHO_SPEED: EL_MACHO_SPEED,
+    PURPLE_MINION_COUNT: PURPLE_MINION_COUNT,
     hasWon: hasWon,
     stageForScore: stageForScore,
     crossedMilestones: crossedMilestones,
-    gruSpeedForScore: gruSpeedForScore
+    gruSpeedForScore: gruSpeedForScore,
+    purpleMinionCountForScore: purpleMinionCountForScore,
+    gruFormForScore: gruFormForScore
   };
 });

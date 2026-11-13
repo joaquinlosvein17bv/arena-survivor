@@ -490,6 +490,8 @@
   var matBlack = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.72 });
   var matWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.05 });
   var matMetal = new THREE.MeshStandardMaterial({ color: 0x8d949c, roughness: 0.5, metalness: 0.45 });
+  var matPurple = new THREE.MeshStandardMaterial({ color: 0x7b2cbf, roughness: 0.58 });
+  var matPurpleDark = new THREE.MeshStandardMaterial({ color: 0x3c096c, roughness: 0.72 });
 
   var matTrunk = new THREE.MeshStandardMaterial({ color: 0x7a5230, roughness: 0.95 });
   var matLeafA = new THREE.MeshStandardMaterial({ color: 0x3f8f3a, roughness: 0.85, flatShading: true });
@@ -930,6 +932,153 @@
   player.root.rotation.y = Math.PI;
 
   /* ============================================================
+     Purple minion pursuers
+  ============================================================ */
+  function createPurpleMinion() {
+    var root = new THREE.Group();
+    var model = new THREE.Group();
+    root.add(model);
+
+    var body = new THREE.Mesh(new THREE.CapsuleGeometry(0.50, 0.64, 5, 14), matPurple);
+    body.position.y = 1.04;
+    model.add(body);
+
+    var overalls = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.54, 0.62, 16), matPurpleDark);
+    overalls.position.y = 0.72;
+    model.add(overalls);
+
+    var eye = new THREE.Mesh(new THREE.SphereGeometry(0.24, 16, 12), matWhite);
+    eye.position.set(0, 1.43, 0.39);
+    model.add(eye);
+
+    var pupil = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), matBlack);
+    pupil.position.set(0, 1.43, 0.59);
+    model.add(pupil);
+
+    var arms = [];
+    var legs = [];
+    for (var side = -1; side <= 1; side += 2) {
+      var armPivot = new THREE.Group();
+      armPivot.position.set(side * 0.50, 1.20, 0);
+      var arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.10, 0.38, 4, 8), matPurple);
+      arm.position.y = -0.25;
+      armPivot.add(arm);
+      model.add(armPivot);
+      arms.push(armPivot);
+
+      var legPivot = new THREE.Group();
+      legPivot.position.set(side * 0.20, 0.34, 0);
+      var leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.10, 4, 8), matPurpleDark);
+      leg.position.y = -0.14;
+      legPivot.add(leg);
+      model.add(legPivot);
+      legs.push(legPivot);
+    }
+
+    root.traverse(function (object) {
+      if (object.isMesh) {
+        object.castShadow = true;
+        object.receiveShadow = true;
+      }
+    });
+
+    return { root: root, model: model, arms: arms, legs: legs };
+  }
+
+  var purpleMinions = [];
+  var playerSlow = 0;
+
+  function spawnPurpleMinions() {
+    var desired = gameRules.purpleMinionCountForScore(score);
+    while (purpleMinions.length < desired) {
+      var model = createPurpleMinion();
+      var angle = (purpleMinions.length / Math.max(1, desired)) * TAU + Math.PI * 0.35;
+      var radius = 24 + purpleMinions.length * 4;
+      model.root.position.set(
+        player.root.position.x + Math.cos(angle) * radius,
+        0,
+        player.root.position.z + Math.sin(angle) * radius
+      );
+      scene.add(model.root);
+      purpleMinions.push({
+        root: model.root,
+        model: model.model,
+        arms: model.arms,
+        legs: model.legs,
+        speed: 5.45,
+        walk: rand(0, TAU),
+        hitCooldown: 0,
+        stun: 0,
+        confused: 0,
+        rooted: 0
+      });
+    }
+  }
+
+  function clearPurpleMinions() {
+    for (var i = 0; i < purpleMinions.length; i++) {
+      scene.remove(purpleMinions[i].root);
+    }
+    purpleMinions.length = 0;
+  }
+
+  function updatePurpleMinions(dt) {
+    for (var i = 0; i < purpleMinions.length; i++) {
+      var minionEnemy = purpleMinions[i];
+      if (minionEnemy.hitCooldown > 0) minionEnemy.hitCooldown -= dt;
+      if (minionEnemy.stun > 0) minionEnemy.stun -= dt;
+      if (minionEnemy.confused > 0) minionEnemy.confused -= dt;
+      if (minionEnemy.rooted > 0) minionEnemy.rooted -= dt;
+
+      var dx = player.root.position.x - minionEnemy.root.position.x;
+      var dz = player.root.position.z - minionEnemy.root.position.z;
+      var dist = Math.hypot(dx, dz) || 1;
+      var canMove = minionEnemy.stun <= 0 && minionEnemy.rooted <= 0;
+      var moveSpeed = minionEnemy.speed * (minionEnemy.confused > 0 ? 0.25 : 1);
+
+      if (canMove) {
+        var wobble = Math.sin(nowT * 2.4 + i * 2.1) * 0.34;
+        var dirX = dx / dist;
+        var dirZ = dz / dist;
+        var moveX = dirX - dirZ * wobble;
+        var moveZ = dirZ + dirX * wobble;
+        var moveLength = Math.hypot(moveX, moveZ) || 1;
+        moveX /= moveLength;
+        moveZ /= moveLength;
+
+        minionEnemy.root.position.x += moveX * moveSpeed * dt;
+        minionEnemy.root.position.z += moveZ * moveSpeed * dt;
+        resolveObstacles(minionEnemy.root.position, 0.48);
+        clampToWorld(minionEnemy.root.position);
+        minionEnemy.root.rotation.y = angleLerp(
+          minionEnemy.root.rotation.y,
+          Math.atan2(dirX, dirZ),
+          1 - Math.exp(-5.5 * dt)
+        );
+      }
+
+      minionEnemy.walk += dt * moveSpeed * (canMove ? 1 : 0.15);
+      var swing = Math.sin(minionEnemy.walk) * 0.72 * (canMove ? 1 : 0.15);
+      minionEnemy.arms[0].rotation.x = swing;
+      minionEnemy.arms[1].rotation.x = -swing;
+      minionEnemy.legs[0].rotation.x = -swing;
+      minionEnemy.legs[1].rotation.x = swing;
+      minionEnemy.model.position.y = Math.abs(Math.sin(minionEnemy.walk)) * 0.05;
+
+      if (dist < 1.75 && minionEnemy.hitCooldown <= 0) {
+        minionEnemy.hitCooldown = 1.25;
+        playerSlow = Math.max(playerSlow, 1.05);
+        player.root.position.x += (dx / dist) * 3.0;
+        player.root.position.z += (dz / dist) * 3.0;
+        resolveObstacles(player.root.position, 0.55);
+        clampToWorld(player.root.position);
+        shake = Math.max(shake, 0.28);
+        toast('PURPLE MINION SLOWED YOU');
+      }
+    }
+  }
+
+  /* ============================================================
      Gru
   ============================================================ */
   function makeAlertTexture() {
@@ -1072,9 +1221,63 @@
     coatMat: gruModel.coatMat,
     speed: 4.2,
     bob: 0,
-    stun: 0
+    stun: 0,
+    form: 'gru',
+    machoGroup: null
   };
   gru.root.position.set(0, 0, -62);
+
+  function buildElMachoParts() {
+    var group = new THREE.Group();
+    var suitMat = new THREE.MeshStandardMaterial({ color: 0x8a2be2, roughness: 0.58 });
+    var goldMat = new THREE.MeshStandardMaterial({ color: 0xffc400, roughness: 0.35, metalness: 0.35 });
+    var moustacheMat = new THREE.MeshStandardMaterial({ color: 0x111116, roughness: 0.9 });
+
+    for (var side = -1; side <= 1; side += 2) {
+      var shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 10), suitMat);
+      shoulder.position.set(side * 0.74, 2.20, 0);
+      shoulder.scale.set(1.25, 0.78, 1.05);
+      group.add(shoulder);
+
+      var moustacheHalf = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.42, 8), moustacheMat);
+      moustacheHalf.position.set(side * 0.13, 2.77, 0.48);
+      moustacheHalf.rotation.z = side * -1.18;
+      moustacheHalf.rotation.x = Math.PI / 2;
+      group.add(moustacheHalf);
+    }
+
+    var chest = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.88, 0.18), suitMat);
+    chest.position.set(0, 1.70, 0.56);
+    group.add(chest);
+
+    var belt = new THREE.Mesh(new THREE.TorusGeometry(0.63, 0.09, 8, 24), goldMat);
+    belt.position.set(0, 1.16, 0);
+    belt.rotation.x = Math.PI / 2;
+    group.add(belt);
+
+    var emblem = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 16), goldMat);
+    emblem.position.set(0, 1.70, 0.69);
+    emblem.rotation.x = Math.PI / 2;
+    group.add(emblem);
+
+    group.visible = false;
+    group.traverse(function (object) {
+      if (object.isMesh) object.castShadow = true;
+    });
+    gru.model.add(group);
+    gru.machoGroup = group;
+  }
+
+  function setGruForm(form) {
+    gru.form = form;
+    var isMacho = form === 'el-macho';
+    gru.machoGroup.visible = isMacho;
+    gru.coatMat.color.setHex(isMacho ? 0x45145f : 0x2e3038);
+    gru.model.scale.set(isMacho ? 1.18 : 1, isMacho ? 1.06 : 1, isMacho ? 1.18 : 1);
+    gru.root.scale.setScalar(isMacho ? 1.12 : 1);
+  }
+
+  buildElMachoParts();
 
   /* ============================================================
      Game state
@@ -1454,6 +1657,7 @@
   ============================================================ */
   function updatePlayer(dt) {
     if (invuln > 0) invuln -= dt;
+    if (playerSlow > 0) playerSlow -= dt;
 
     forwardVec.set(-Math.sin(yaw), 0, -Math.cos(yaw));
     rightVec.set(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -1483,6 +1687,7 @@
       mag > 0.05 && stamina > 0.5;
 
     var speed = wantsSprint ? PLAYER_SPRINT : PLAYER_WALK;
+    if (playerSlow > 0) speed *= 0.62;
 
     if (wantsSprint) {
       stamina = Math.max(0, stamina - 23 * dt);
@@ -1748,9 +1953,15 @@
       if (triggeredMilestones.includes(milestone)) continue;
       triggeredMilestones.push(milestone);
 
-      if (milestone === 5) toast('5 BANANAS! GRU IS FASTER');
-      else if (milestone === 10) toast('10 BANANAS! THE CHASE IS ESCALATING');
-      else if (milestone === 15) toast('15 BANANAS! FINAL PHASE');
+      if (milestone === 5) {
+        toast('5 BANANAS! GRU IS FASTER');
+      } else if (milestone === 10) {
+        spawnPurpleMinions();
+        toast('10 BANANAS! PURPLE MINIONS INCOMING');
+      } else if (milestone === 15) {
+        setGruForm(gameRules.gruFormForScore(currentScore));
+        toast('15 BANANAS! EL MACHO HAS ARRIVED');
+      }
     }
   }
 
@@ -1859,6 +2070,16 @@
       radarCtx.fill();
     }
 
+    for (var pi = 0; pi < purpleMinions.length; pi++) {
+      var purple = purpleMinions[pi];
+      var purpleX = cx + (purple.root.position.x - px) * scale;
+      var purpleY = cy + (purple.root.position.z - pz) * scale;
+      radarCtx.beginPath();
+      radarCtx.arc(purpleX, purpleY, 3.6, 0, TAU);
+      radarCtx.fillStyle = '#b15cff';
+      radarCtx.fill();
+    }
+
     var gx = (gru.root.position.x - px) * scale;
     var gy = (gru.root.position.z - pz) * scale;
     var gl = Math.hypot(gx, gy);
@@ -1903,6 +2124,8 @@
     score = 0;
     currentStage = 0;
     triggeredMilestones.length = 0;
+    playerSlow = 0;
+    clearPurpleMinions();
     lives = 3;
     elapsed = 0;
     stamina = 100;
@@ -1928,6 +2151,7 @@
     gru.coatMat.emissiveIntensity = 0;
     gru.alert.material.opacity = 0;
     gru.bob = 0;
+    setGruForm('gru');
 
     yaw = 0;
     pitch = 0.24;
@@ -2040,6 +2264,7 @@
       elapsed += dt;
       updatePlayer(dt);
       updateGru(dt);
+      updatePurpleMinions(dt);
       updateBananas(dt);
       updateHud(dt);
 
@@ -2064,6 +2289,7 @@
   window.__minionRun = {
     player: player,
     gru: gru,
+    purpleMinions: purpleMinions,
     camera: camera,
     scene: scene,
     sun: sun,
@@ -2074,6 +2300,9 @@
     getLives: function () { return lives; },
     getGoal: function () { return gameRules.BANANA_GOAL; },
     getStage: function () { return currentStage; },
+    getGruForm: function () { return gru.form; },
+    getPurpleMinionCount: function () { return purpleMinions.length; },
+    getPlayerSlow: function () { return playerSlow; },
     getTriggeredMilestones: function () { return triggeredMilestones.slice(); },
     setScore: function (v) {
       var previousScore = score;
