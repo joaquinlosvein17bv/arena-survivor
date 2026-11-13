@@ -1100,6 +1100,7 @@
         player.root.position.z + Math.sin(angle) * radius
       );
       scene.add(model.root);
+      spawnPurpleArrivalEffect(model.root);
       purpleMinions.push({
         root: model.root,
         model: model.model,
@@ -1324,6 +1325,8 @@
     stun: 0,
     rooted: 0,
     confused: 0,
+    transforming: false,
+    transformElapsed: 0,
     form: 'gru',
     machoGroup: null
   };
@@ -1377,6 +1380,35 @@
     gru.coatMat.color.setHex(isMacho ? 0x45145f : 0x2e3038);
     gru.model.scale.set(isMacho ? 1.18 : 1, isMacho ? 1.06 : 1, isMacho ? 1.18 : 1);
     gru.root.scale.setScalar(isMacho ? 1.12 : 1);
+  }
+
+  function startElMachoTransformation() {
+    if (gru.form === 'el-macho' || gru.transforming) return;
+    gru.transforming = true;
+    gru.transformElapsed = 0;
+    spawnElMachoBurst();
+  }
+
+  function updateElMachoTransformation(dt) {
+    if (!gru.transforming) return;
+    var duration = gameRules.visualEffectDuration('elMachoTransformation');
+    gru.transformElapsed = Math.min(duration, gru.transformElapsed + dt);
+    var progress = gru.transformElapsed / duration;
+    var frame = gameRules.elMachoTransformFrame(progress);
+
+    if (frame.reveal && gru.form !== 'el-macho') setGruForm('el-macho');
+    gru.root.scale.setScalar(frame.scale);
+    gru.model.rotation.y = frame.spin;
+    gru.coatMat.emissive.setHex(0x8a2be2);
+    gru.coatMat.emissiveIntensity = frame.glow * 0.85;
+
+    if (progress >= 1) {
+      gru.transforming = false;
+      setGruForm('el-macho');
+      gru.model.rotation.y = 0;
+      gru.coatMat.emissive.setHex(0x000000);
+      gru.coatMat.emissiveIntensity = 0;
+    }
   }
 
   buildElMachoParts();
@@ -1782,6 +1814,80 @@
     });
   }
 
+  function spawnEffectRing(position, color, duration, maxScale, kind) {
+    var material = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.82,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    var ring = new THREE.Mesh(new THREE.RingGeometry(0.72, 1.0, 32), material);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(position);
+    ring.position.y = 0.12;
+    scene.add(ring);
+    powerVisuals.push({
+      mesh: ring,
+      life: duration,
+      maxLife: duration,
+      kind: kind || 'impact-ring',
+      maxScale: maxScale
+    });
+  }
+
+  function spawnPowerImpact(root, color) {
+    spawnEffectRing(
+      root.position,
+      color,
+      gameRules.visualEffectDuration('powerImpact'),
+      3.4,
+      'impact-ring'
+    );
+  }
+
+  function spawnPurpleArrivalEffect(root) {
+    var duration = gameRules.visualEffectDuration('purpleArrival');
+    spawnEffectRing(root.position, 0xb15cff, duration, 5.2, 'arrival-ring');
+
+    var material = new THREE.MeshBasicMaterial({
+      color: 0x8a2be2,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false
+    });
+    var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.1, 7, 16, 1, true), material);
+    beam.position.copy(root.position);
+    beam.position.y = 3.5;
+    scene.add(beam);
+    powerVisuals.push({ mesh: beam, life: duration, maxLife: duration, kind: 'arrival-beam' });
+  }
+
+  function spawnElMachoBurst() {
+    var duration = gameRules.visualEffectDuration('elMachoTransformation');
+    spawnEffectRing(gru.root.position, 0xffc400, duration, 8.0, 'transform-ring');
+    spawnEffectRing(gru.root.position, 0x8a2be2, duration, 6.2, 'transform-ring');
+
+    var material = new THREE.MeshBasicMaterial({
+      color: 0x8a2be2,
+      transparent: true,
+      opacity: 0.30,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    var sphere = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), material);
+    sphere.position.copy(gru.root.position);
+    sphere.position.y += 1.9;
+    scene.add(sphere);
+    powerVisuals.push({
+      mesh: sphere,
+      life: duration,
+      maxLife: duration,
+      kind: 'transform-sphere',
+      maxScale: 5.2
+    });
+  }
+
   function useFreezeRay() {
     var effect = gameRules.powerEffect('freeze');
     var targets = pursuerTargets();
@@ -1789,6 +1895,7 @@
       var target = targets[i];
       if (targetInFront(target.root, effect.range, effect.coneDot)) {
         target.actor.stun = Math.max(target.actor.stun || 0, effect.duration);
+        spawnPowerImpact(target.root, 0x70d6ff);
       }
     }
     spawnFreezeBeam(effect.range);
@@ -1814,6 +1921,7 @@
       target.root.position.x += (dx / distance) * effect.push;
       target.root.position.z += (dz / distance) * effect.push;
       target.actor.confused = Math.max(target.actor.confused || 0, effect.duration);
+      spawnPowerImpact(target.root, 0x80d93d);
       resolveObstacles(target.root.position, target.actor === gru ? 0.72 : 0.48);
       clampToWorld(target.root.position);
     }
@@ -1871,6 +1979,7 @@
 
     nearest.actor.rooted = Math.max(nearest.actor.rooted || 0, effect.duration);
     spawnTentacleVisual(nearest.root);
+    spawnPowerImpact(nearest.root, 0xb15cff);
     sfx.tentacle();
     toast('TENTACLE LOCKED');
     return true;
@@ -2149,7 +2258,7 @@
     var dz = player.root.position.z - gru.root.position.z;
     var dist = Math.hypot(dx, dz);
 
-    if (gru.stun > 0 || gru.rooted > 0) {
+    if (gru.stun > 0 || gru.rooted > 0 || gru.transforming) {
       if (gru.stun > 0) gru.stun -= dt;
       if (gru.rooted > 0) gru.rooted -= dt;
       gru.coatMat.emissive.setHex(gru.rooted > 0 ? 0x8a2be2 : 0x2f6bff);
@@ -2196,7 +2305,7 @@
     }
 
     /* animation */
-    var moving = gru.stun <= 0 && gru.rooted <= 0 ? 1 : 0;
+    var moving = gru.stun <= 0 && gru.rooted <= 0 && !gru.transforming ? 1 : 0;
     gru.bob += dt * (2.2 + gru.speed * 0.9) * (moving ? 1 : 0.15);
     var gs = Math.sin(gru.bob);
     gru.legs[0].rotation.x = gs * 0.55 * moving;
@@ -2206,7 +2315,7 @@
     gru.model.position.y = Math.abs(gs) * 0.055 * moving;
 
     /* catch */
-    if (gru.stun <= 0 && gru.rooted <= 0 && invuln <= 0 && dist < CATCH_RADIUS) {
+    if (gru.stun <= 0 && gru.rooted <= 0 && !gru.transforming && invuln <= 0 && dist < CATCH_RADIUS) {
       catchPlayer();
     }
   }
@@ -2313,7 +2422,7 @@
       if (milestone === 10) {
         spawnPurpleMinions();
       } else if (milestone === 15) {
-        setGruForm(gameRules.gruFormForScore(currentScore));
+        startElMachoTransformation();
       }
       playMilestonePresentation(milestone);
     }
@@ -2382,12 +2491,20 @@
       }
 
       var progress = 1 - visual.life / visual.maxLife;
-      visual.mesh.material.opacity = (1 - progress) * (visual.kind === 'beam' ? 0.72 : 0.34);
+      var strongVisual = visual.kind === 'beam' || visual.kind === 'tentacle' || visual.kind.includes('ring');
+      visual.mesh.material.opacity = (1 - progress) * (strongVisual ? 0.82 : 0.34);
       if (visual.kind === 'cloud') {
         visual.mesh.scale.setScalar(1.4 + progress * visual.radius);
       } else if (visual.kind === 'tentacle') {
         visual.mesh.scale.x = 1 + Math.sin(progress * Math.PI * 6) * 0.28;
         visual.mesh.scale.z = visual.mesh.scale.x;
+      } else if (visual.kind.includes('ring')) {
+        visual.mesh.scale.setScalar(1 + progress * visual.maxScale);
+      } else if (visual.kind === 'arrival-beam') {
+        visual.mesh.scale.x = 1 + progress * 0.7;
+        visual.mesh.scale.z = visual.mesh.scale.x;
+      } else if (visual.kind === 'transform-sphere') {
+        visual.mesh.scale.setScalar(1 + progress * visual.maxScale);
       } else {
         visual.mesh.scale.y = 1 + progress * 3;
       }
@@ -2539,6 +2656,9 @@
     gru.stun = 0;
     gru.rooted = 0;
     gru.confused = 0;
+    gru.transforming = false;
+    gru.transformElapsed = 0;
+    gru.model.rotation.y = 0;
     gru.coatMat.emissive.setHex(0x000000);
     gru.coatMat.emissiveIntensity = 0;
     gru.alert.material.opacity = 0;
@@ -2677,6 +2797,7 @@
       sun.target.updateMatrixWorld();
     }
 
+    updateElMachoTransformation(dt);
     updateParticles(dt);
     updatePowerVisuals(dt);
     updateClouds(dt);
@@ -2703,6 +2824,15 @@
     getGoal: function () { return gameRules.BANANA_GOAL; },
     getStage: function () { return currentStage; },
     getGruForm: function () { return gru.form; },
+    getTransformation: function () {
+      return {
+        active: gru.transforming,
+        elapsed: gru.transformElapsed,
+        form: gru.form,
+        scale: gru.root.scale.x,
+        machoVisible: gru.machoGroup.visible
+      };
+    },
     getPurpleMinionCount: function () { return purpleMinions.length; },
     getPlayerSlow: function () { return playerSlow; },
     getCinematic: function () {

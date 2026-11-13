@@ -112,3 +112,28 @@ test('each milestone has one cinematic message and duration', () => {
   });
   assert.equal(rules.milestonePresentation(7), null);
 });
+
+test('arrival, power impact, and transformation effects have bounded durations', () => {
+  assert.equal(rules.visualEffectDuration('purpleArrival'), 1);
+  assert.equal(rules.visualEffectDuration('powerImpact'), 0.55);
+  assert.equal(rules.visualEffectDuration('elMachoTransformation'), 1.2);
+});
+
+test('El Macho transformation frames reveal and settle predictably', () => {
+  assert.deepEqual(rules.elMachoTransformFrame(0), {
+    scale: 1,
+    spin: 0,
+    reveal: false,
+    glow: 0
+  });
+  const middle = rules.elMachoTransformFrame(0.5);
+  assert.equal(middle.reveal, true);
+  assert.ok(middle.scale > 1.25);
+  assert.ok(middle.glow > 0.99);
+  assert.deepEqual(rules.elMachoTransformFrame(1), {
+    scale: 1.12,
+    spin: Math.PI * 3,
+    reveal: true,
+    glow: 0
+  });
+});

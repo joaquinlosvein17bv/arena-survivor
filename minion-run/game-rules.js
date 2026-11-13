@@ -31,6 +31,11 @@
     10: { title: 'PURPLE MINIONS INCOMING', subtitle: 'They can slow you down.', duration: 1.45 },
     15: { title: 'EL MACHO HAS ARRIVED', subtitle: 'Final chase!', duration: 1.7 }
   };
+  var VISUAL_EFFECT_DURATIONS = {
+    purpleArrival: 1,
+    powerImpact: 0.55,
+    elMachoTransformation: 1.2
+  };
   var GRU_BASE_SPEED = 4.2;
   var GRU_ANGRY_SPEED = 5.0;
   var EL_MACHO_SPEED = 6.2;
@@ -94,6 +99,25 @@
     return presentation ? Object.assign({}, presentation) : null;
   }
 
+  function visualEffectDuration(effectName) {
+    var duration = VISUAL_EFFECT_DURATIONS[effectName];
+    if (typeof duration !== 'number') {
+      throw new Error('Unknown Minion Run visual effect: ' + effectName);
+    }
+    return duration;
+  }
+
+  function elMachoTransformFrame(progress) {
+    var bounded = Math.min(1, Math.max(0, progress));
+    var glow = bounded === 0 || bounded === 1 ? 0 : Math.sin(bounded * Math.PI);
+    return {
+      scale: 1 + bounded * 0.12 + glow * 0.24,
+      spin: bounded * Math.PI * 3,
+      reveal: bounded >= 0.45,
+      glow: glow
+    };
+  }
+
   return {
     BANANA_GOAL: BANANA_GOAL,
     MILESTONES: MILESTONES.slice(),
@@ -114,6 +138,8 @@
     powerForRoll: powerForRoll,
     createPowerPickup: createPowerPickup,
     powerEffect: powerEffect,
-    milestonePresentation: milestonePresentation
+    milestonePresentation: milestonePresentation,
+    visualEffectDuration: visualEffectDuration,
+    elMachoTransformFrame: elMachoTransformFrame
   };
 });

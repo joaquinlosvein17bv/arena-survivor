@@ -26,8 +26,8 @@ Branch: `master` (direct-main delivery explicitly requested). Delivery: `excepti
 - **T4 — Progress HUD and golden powers** (`S4`, `S5`, `S13`) — Route: inline. Status: done. Pair crosses G01/G02: progress HUD + golden banana power pickup. Commit: `269067b`.
 - **T5 — Freeze ray and fart gun** (`S6`, `S7`, `S13`) — Route: inline. Status: done. Pair: freeze ray + fart gun. Commit: `56bf6e7`.
 - **T6 — Tentacle gun and controls** (`S8`, `S9`, `S13`) — Route: inline. Status: done. Pair: tentacle gun + keyboard/touch gadget controls. Commit: `9050c01`.
-- **T7 — Cinematics and sound messaging** (`S10`, `S13`) — Route: inline. Status: done. Pair: milestone cinematics + milestone sounds/messages. Commit: this work-unit commit.
-- **T8 — Effects and transformation animation** (`S11`, `S13`) — Route: inline. Status: pending. Pair: visual effects + improved El Macho transformation animation. Commit: pending.
+- **T7 — Cinematics and sound messaging** (`S10`, `S13`) — Route: inline. Status: done. Pair: milestone cinematics + milestone sounds/messages. Commit: `357e6b2`.
+- **T8 — Effects and transformation animation** (`S11`, `S13`) — Route: inline. Status: done. Pair: visual effects + improved El Macho transformation animation. Commit: this work-unit commit.
 - **T9 — Victory summary and time score** (`S12`, `S13`) — Route: inline. Status: pending. Final single item: victory screen + time-based score. Commit: pending.
 
 ## Log
@@ -43,3 +43,4 @@ Branch: `master` (direct-main delivery explicitly requested). Delivery: `excepti
 - **L9 — T5 evidence:** RED: freeze and fart effect-contract tests failed because `powerEffect` was absent. GREEN: 11/11 rule tests passed; Playwright froze forward-facing Gru for 4 seconds, consumed the charge, then pushed Gru and a purple minion 10 units and applied 3 seconds of confusion. Blue beam and green cloud visuals were present. Risk: none; gadget effects are reversible, run-local state.
 - **L10 — T6 evidence:** RED: tentacle effect and input-map tests failed because the effect and control contract were absent. GREEN: 13/13 rule tests passed; Playwright used `E` to root the nearest purple minion for 5 seconds, used the touch gadget button to root Gru, consumed each charge, and confirmed Space still jumps. Risk: none; controls add an action without changing existing key meanings.
 - **L11 — T7 evidence:** RED: milestone-presentation test failed because the presentation API was absent. GREEN: 14/14 rule tests passed; Playwright observed the exact 5/10/15 titles, subtitles, sound markers, one-shot milestone history, slowed gameplay during the overlay, and automatic overlay dismissal. Risk: none; presentation state is transient and leaves movement controls enabled.
+- **L12 — T8 evidence:** RED: visual-duration and transformation-frame tests failed because both APIs were absent. GREEN: 16/16 rule tests passed; Playwright observed four purple arrival effects, cleanup after one second, a 1.2-second Gru-to-El-Macho scale/spin/reveal animation settling at scale 1.12, and separate gadget impact visuals. Risk: none; effects are temporary scene objects disposed after use.
