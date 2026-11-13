@@ -53,7 +53,47 @@
     box-shadow:0 10px 26px rgba(0,0,0,.28);
   }
   .chip .emoji{ font-size:20px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+  .chip .goal{ color:rgba(255,255,255,.55); font-size:14px; letter-spacing:1px; }
   .chip.small{ font-size:15px; letter-spacing:1px; padding:9px 15px; }
+
+  .objective{
+    position:absolute; left:18px; top:72px; width:min(280px,calc(100vw - 36px));
+    padding:10px 13px 18px; border:1px solid rgba(255,255,255,.14); border-radius:14px;
+    background:rgba(10,16,22,.58); backdrop-filter:blur(10px);
+    box-shadow:0 10px 26px rgba(0,0,0,.24);
+  }
+  .objective__label{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .objective__label span{ font-size:9px; font-weight:900; letter-spacing:2px; color:rgba(255,255,255,.62); }
+  .objective__label b{ font-size:13px; color:var(--yellow); font-variant-numeric:tabular-nums; }
+  .objective__track{
+    position:relative; height:8px; margin-top:8px; border-radius:999px;
+    background:rgba(0,0,0,.46); border:1px solid rgba(255,255,255,.12);
+  }
+  .objective__fill{
+    display:block; width:0%; height:100%; border-radius:999px;
+    background:linear-gradient(90deg,#ffd60a,#ff9f0a); transition:width .22s ease;
+  }
+  .progress-marker{
+    position:absolute; top:13px; transform:translateX(-50%); color:rgba(255,255,255,.42);
+    font-size:9px; font-weight:900; transition:color .2s ease, transform .2s ease;
+  }
+  .progress-marker::before{
+    content:""; position:absolute; left:50%; top:-15px; width:2px; height:8px;
+    transform:translateX(-50%); background:rgba(255,255,255,.25);
+  }
+  .progress-marker.done{ color:var(--yellow); }
+  .progress-marker.done::before{ background:var(--yellow); }
+  .progress-marker.active{ transform:translateX(-50%) scale(1.2); color:#fff; }
+
+  .power-chip{
+    position:absolute; right:18px; bottom:58px; min-width:190px; padding:11px 15px;
+    border:1px solid rgba(255,255,255,.14); border-radius:14px;
+    background:rgba(10,16,22,.62); backdrop-filter:blur(10px); text-align:right;
+    box-shadow:0 10px 26px rgba(0,0,0,.26);
+  }
+  .power-chip span{ display:block; font-size:9px; font-weight:900; letter-spacing:2px; color:rgba(255,255,255,.55); }
+  .power-chip b{ display:block; margin-top:3px; color:rgba(255,255,255,.78); font-size:14px; }
+  .power-chip.ready b{ color:var(--yellow); }
 
   .timer{
     position:absolute; left:50%; top:2px; transform:translateX(-50%);
@@ -195,6 +235,12 @@
   .jumpBtn:active{ transform:scale(.94); }
 
   .fatal{ max-width:520px; margin:0 auto; line-height:1.6; color:rgba(255,255,255,.8); }
+
+  @media (max-width:640px){
+    .objective{ top:66px; width:220px; }
+    .power-chip{ right:18px; bottom:156px; min-width:154px; }
+    #radar{ width:126px; height:126px; }
+  }
 </style>
 </head>
 <body>
@@ -205,11 +251,27 @@
 <div id="hud" aria-hidden="true">
   <div class="hud-top">
     <div class="chips">
-      <div class="chip"><span class="emoji">&#127820;</span><span id="score">0</span></div>
+      <div class="chip"><span class="emoji">&#127820;</span><span id="score">0</span><span class="goal">/ 20</span></div>
       <div class="chip small" id="lives">&#10084;&#65039;&#10084;&#65039;&#10084;&#65039;</div>
     </div>
     <div class="timer" id="timer">0:00</div>
     <canvas id="radar" width="160" height="160"></canvas>
+  </div>
+
+  <div class="objective" aria-label="Banana escape progress">
+    <div class="objective__label"><span>BANANA ESCAPE</span><b id="objectiveScore">0 / 20</b></div>
+    <div class="objective__track">
+      <i id="objectiveFill" class="objective__fill"></i>
+      <i class="progress-marker" data-score="5" style="left:25%">5</i>
+      <i class="progress-marker" data-score="10" style="left:50%">10</i>
+      <i class="progress-marker" data-score="15" style="left:75%">15</i>
+      <i class="progress-marker" data-score="20" style="left:100%">20</i>
+    </div>
+  </div>
+
+  <div id="powerChip" class="power-chip">
+    <span>GADGET</span>
+    <b id="powerName">NONE</b>
   </div>
 
   <div class="meters">
@@ -329,6 +391,11 @@
   var canvas = document.getElementById('game');
   var hud = document.getElementById('hud');
   var scoreEl = document.getElementById('score');
+  var objectiveScoreEl = document.getElementById('objectiveScore');
+  var objectiveFillEl = document.getElementById('objectiveFill');
+  var progressMarkers = Array.prototype.slice.call(document.querySelectorAll('.progress-marker'));
+  var powerChipEl = document.getElementById('powerChip');
+  var powerNameEl = document.getElementById('powerName');
   var livesEl = document.getElementById('lives');
   var timerEl = document.getElementById('timer');
   var staminaEl = document.getElementById('stamina');
@@ -1291,6 +1358,7 @@
   var score = 0;
   var currentStage = 0;
   var triggeredMilestones = [];
+  var heldPower = null;
   var lives = 3;
   var elapsed = 0;
   var stamina = 100;
@@ -1554,6 +1622,30 @@
   ============================================================ */
   function updateScoreHud() {
     scoreEl.textContent = score;
+    objectiveScoreEl.textContent = score + ' / ' + gameRules.BANANA_GOAL;
+    objectiveFillEl.style.width = gameRules.progressPercent(score).toFixed(1) + '%';
+
+    for (var i = 0; i < progressMarkers.length; i++) {
+      var marker = progressMarkers[i];
+      var markerScore = parseInt(marker.getAttribute('data-score'), 10);
+      marker.classList.toggle('done', score >= markerScore);
+      marker.classList.toggle('active', score < markerScore && markerScore === gameRules.PROGRESS_MARKERS[currentStage]);
+    }
+  }
+  function updatePowerHud() {
+    var labels = {
+      freeze: 'FREEZE RAY',
+      fart: 'FART GUN',
+      tentacle: 'TENTACLE GUN'
+    };
+    var isReady = heldPower && heldPower.charges > 0;
+    powerChipEl.classList.toggle('ready', Boolean(isReady));
+    powerNameEl.textContent = isReady ? labels[heldPower.type] + ' x' + heldPower.charges : 'NONE';
+  }
+  function grantPower(type) {
+    heldPower = gameRules.createPowerPickup(type);
+    updatePowerHud();
+    toast(powerNameEl.textContent + ' READY');
   }
   function updateLivesHud() {
     var out = '';
@@ -1925,10 +2017,8 @@
     processMilestones(previousScore, score);
 
     if (b.golden) {
-      gru.stun = 5.0;
       sfx.golden();
-      sfx.freeze();
-      toast('GOLDEN BANANA! GRU IS FROZEN');
+      grantPower(gameRules.powerForRoll(Math.random()));
     } else {
       sfx.collect();
     }
@@ -2124,6 +2214,7 @@
     score = 0;
     currentStage = 0;
     triggeredMilestones.length = 0;
+    heldPower = null;
     playerSlow = 0;
     clearPurpleMinions();
     lives = 3;
@@ -2167,6 +2258,7 @@
     resetBananas();
 
     updateScoreHud();
+    updatePowerHud();
     updateLivesHud();
     timerEl.textContent = '0:00';
     staminaEl.style.width = '100%';
@@ -2303,6 +2395,10 @@
     getGruForm: function () { return gru.form; },
     getPurpleMinionCount: function () { return purpleMinions.length; },
     getPlayerSlow: function () { return playerSlow; },
+    getHeldPower: function () {
+      return heldPower ? { type: heldPower.type, charges: heldPower.charges } : null;
+    },
+    grantPower: grantPower,
     getTriggeredMilestones: function () { return triggeredMilestones.slice(); },
     setScore: function (v) {
       var previousScore = score;
@@ -2319,6 +2415,7 @@
   /* boot */
   updateLivesHud();
   updateScoreHud();
+  updatePowerHud();
   hintEl.textContent = isTouch
     ? 'JOYSTICK MOVE \u00B7 DRAG TO LOOK \u00B7 TAP JUMP'
     : 'WASD MOVE \u00B7 SHIFT SPRINT \u00B7 SPACE JUMP \u00B7 MOUSE LOOK \u00B7 ESC PAUSE \u00B7 M MUTE';

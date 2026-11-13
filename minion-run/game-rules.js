@@ -15,6 +15,8 @@
 
   var BANANA_GOAL = 20;
   var MILESTONES = [5, 10, 15];
+  var PROGRESS_MARKERS = [5, 10, 15, 20];
+  var POWER_TYPES = ['freeze', 'fart', 'tentacle'];
   var GRU_BASE_SPEED = 4.2;
   var GRU_ANGRY_SPEED = 5.0;
   var EL_MACHO_SPEED = 6.2;
@@ -50,9 +52,28 @@
     return collectedBananas >= 15 ? 'el-macho' : 'gru';
   }
 
+  function progressPercent(collectedBananas) {
+    var bounded = Math.min(BANANA_GOAL, Math.max(0, collectedBananas));
+    return (bounded / BANANA_GOAL) * 100;
+  }
+
+  function powerForRoll(roll) {
+    var bounded = Math.min(0.999999, Math.max(0, roll));
+    return POWER_TYPES[Math.floor(bounded * POWER_TYPES.length)];
+  }
+
+  function createPowerPickup(type) {
+    if (!POWER_TYPES.includes(type)) {
+      throw new Error('Unknown Minion Run power: ' + type);
+    }
+    return { type: type, charges: 1 };
+  }
+
   return {
     BANANA_GOAL: BANANA_GOAL,
     MILESTONES: MILESTONES.slice(),
+    PROGRESS_MARKERS: PROGRESS_MARKERS.slice(),
+    POWER_TYPES: POWER_TYPES.slice(),
     GRU_BASE_SPEED: GRU_BASE_SPEED,
     GRU_ANGRY_SPEED: GRU_ANGRY_SPEED,
     EL_MACHO_SPEED: EL_MACHO_SPEED,
@@ -62,6 +83,9 @@
     crossedMilestones: crossedMilestones,
     gruSpeedForScore: gruSpeedForScore,
     purpleMinionCountForScore: purpleMinionCountForScore,
-    gruFormForScore: gruFormForScore
+    gruFormForScore: gruFormForScore,
+    progressPercent: progressPercent,
+    powerForRoll: powerForRoll,
+    createPowerPickup: createPowerPickup
   };
 });

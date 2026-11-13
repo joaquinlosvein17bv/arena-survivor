@@ -47,3 +47,18 @@ test('Gru changes to the El Macho form at fifteen bananas', () => {
   assert.equal(rules.gruFormForScore(15), 'el-macho');
   assert.ok(rules.gruSpeedForScore(15) > rules.gruSpeedForScore(10));
 });
+
+test('the progress HUD uses milestone markers and clamps at the goal', () => {
+  assert.deepEqual(rules.PROGRESS_MARKERS, [5, 10, 15, 20]);
+  assert.equal(rules.progressPercent(0), 0);
+  assert.equal(rules.progressPercent(10), 50);
+  assert.equal(rules.progressPercent(20), 100);
+  assert.equal(rules.progressPercent(25), 100);
+});
+
+test('golden bananas award one deterministic gadget charge', () => {
+  assert.equal(rules.powerForRoll(0), 'freeze');
+  assert.equal(rules.powerForRoll(0.34), 'fart');
+  assert.equal(rules.powerForRoll(0.67), 'tentacle');
+  assert.deepEqual(rules.createPowerPickup('freeze'), { type: 'freeze', charges: 1 });
+});
