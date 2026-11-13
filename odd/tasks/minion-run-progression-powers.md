@@ -1,6 +1,6 @@
 # Minion Run progression, powers, and presentation
 Objective: Turn Minion Run into a 20-banana escape game with staged pursuers, player gadgets, and a polished ending.
-Branch: `master` (direct-main delivery explicitly requested). Delivery: `exception-ok`, nine ordered commits pushed immediately to `origin/master`. Runner: `node --test tests/minion-run-rules.test.cjs` plus local Playwright browser smoke checks. Forecast: approximately 900 authored changed lines.
+Branch: `master` (direct-main delivery explicitly requested). Delivery: `exception-ok`, nine ordered commits pushed immediately to `origin/master`. Runner: `node --test tests/minion-run-rules.test.cjs` plus local Playwright browser smoke checks. Final scope: 1,351 authored changed lines across nine user-mandated work-unit commits.
 
 ## Specs
 
@@ -27,8 +27,8 @@ Branch: `master` (direct-main delivery explicitly requested). Delivery: `excepti
 - **T5 — Freeze ray and fart gun** (`S6`, `S7`, `S13`) — Route: inline. Status: done. Pair: freeze ray + fart gun. Commit: `56bf6e7`.
 - **T6 — Tentacle gun and controls** (`S8`, `S9`, `S13`) — Route: inline. Status: done. Pair: tentacle gun + keyboard/touch gadget controls. Commit: `9050c01`.
 - **T7 — Cinematics and sound messaging** (`S10`, `S13`) — Route: inline. Status: done. Pair: milestone cinematics + milestone sounds/messages. Commit: `357e6b2`.
-- **T8 — Effects and transformation animation** (`S11`, `S13`) — Route: inline. Status: done. Pair: visual effects + improved El Macho transformation animation. Commit: this work-unit commit.
-- **T9 — Victory summary and time score** (`S12`, `S13`) — Route: inline. Status: pending. Final single item: victory screen + time-based score. Commit: pending.
+- **T8 — Effects and transformation animation** (`S11`, `S13`) — Route: inline. Status: done. Pair: visual effects + improved El Macho transformation animation. Commit: `7fd31f1`.
+- **T9 — Victory summary and time score** (`S12`, `S13`) — Route: inline. Status: done. Final single item: victory screen + time-based score. Commit: final work-unit commit (HEAD at closure).
 
 ## Log
 
@@ -44,3 +44,5 @@ Branch: `master` (direct-main delivery explicitly requested). Delivery: `excepti
 - **L10 — T6 evidence:** RED: tentacle effect and input-map tests failed because the effect and control contract were absent. GREEN: 13/13 rule tests passed; Playwright used `E` to root the nearest purple minion for 5 seconds, used the touch gadget button to root Gru, consumed each charge, and confirmed Space still jumps. Risk: none; controls add an action without changing existing key meanings.
 - **L11 — T7 evidence:** RED: milestone-presentation test failed because the presentation API was absent. GREEN: 14/14 rule tests passed; Playwright observed the exact 5/10/15 titles, subtitles, sound markers, one-shot milestone history, slowed gameplay during the overlay, and automatic overlay dismissal. Risk: none; presentation state is transient and leaves movement controls enabled.
 - **L12 — T8 evidence:** RED: visual-duration and transformation-frame tests failed because both APIs were absent. GREEN: 16/16 rule tests passed; Playwright observed four purple arrival effects, cleanup after one second, a 1.2-second Gru-to-El-Macho scale/spin/reveal animation settling at scale 1.12, and separate gadget impact visuals. Risk: none; effects are temporary scene objects disposed after use.
+- **L13 — T9 evidence:** RED: final-score test failed because `calculateRunScore` was absent. GREEN: 17/17 rule tests passed; touch-mode Playwright reached 20 bananas with two lives, observed the dedicated victory summary and deterministic component total, restarted to a clean run, then confirmed the existing zero-life caught/game-over flow still works. Risk: none; scoring is deterministic display-only state.
+- **L14 — Closure:** All nine ordered work units were verified, committed, and pushed immediately as requested. The final feature contains 1,351 authored changed lines; direct-main delivery remained the explicit user-authorized exception strategy.

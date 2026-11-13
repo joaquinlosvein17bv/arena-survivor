@@ -228,6 +228,24 @@
   }
   .best{ margin-top:16px; font-size:12px; letter-spacing:1.5px; color:rgba(255,255,255,.45); }
   .best b{ color:rgba(255,255,255,.8); }
+  .victory-stats{
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;
+    margin:18px auto; max-width:520px;
+  }
+  .victory-stats div{
+    padding:12px 8px; border:1px solid rgba(255,255,255,.12); border-radius:14px;
+    background:rgba(255,255,255,.05); color:rgba(255,255,255,.55);
+    font-size:9px; font-weight:900; letter-spacing:1.8px;
+  }
+  .victory-stats b{ display:block; margin-top:5px; color:#fff; font-size:18px; letter-spacing:0; }
+  .run-score{
+    margin:0 auto 20px; color:rgba(255,255,255,.58); font-size:10px;
+    font-weight:900; letter-spacing:2.2px;
+  }
+  .run-score b{
+    display:block; margin-top:3px; color:var(--yellow); font-size:clamp(30px,7vw,50px);
+    letter-spacing:-1px; text-shadow:0 0 30px rgba(255,217,59,.35);
+  }
 
   /* ---------------- Touch ---------------- */
   .touch{ position:fixed; inset:0; z-index:8; pointer-events:none; }
@@ -360,7 +378,13 @@
   <div class="panel">
     <div class="badge">ESCAPE COMPLETE</div>
     <h2>YOU GOT THE BANANAS!</h2>
-    <p class="lead">You collected all <b>20 bananas</b> and escaped from Gru.</p>
+    <p class="lead">You escaped from Gru with the complete banana haul.</p>
+    <div class="victory-stats">
+      <div>BANANAS<b id="winBananas">20 / 20</b></div>
+      <div>TIME<b id="winTime">0:00</b></div>
+      <div>LIVES<b id="winLives">3</b></div>
+    </div>
+    <div class="run-score">RUN SCORE<b id="winRunScore">0</b></div>
     <button id="winAgainBtn" class="btn" type="button">RUN AGAIN</button>
   </div>
 </div>
@@ -440,6 +464,10 @@
   var pauseScreen = document.getElementById('pauseScreen');
   var overScreen = document.getElementById('overScreen');
   var winScreen = document.getElementById('winScreen');
+  var winBananasEl = document.getElementById('winBananas');
+  var winTimeEl = document.getElementById('winTime');
+  var winLivesEl = document.getElementById('winLives');
+  var winRunScoreEl = document.getElementById('winRunScore');
   var bestStartEl = document.getElementById('bestStart');
   var bestOverEl = document.getElementById('bestOver');
   var finalScoreEl = document.getElementById('finalScore');
@@ -1438,6 +1466,7 @@
   var cinematicTimer = 0;
   var activeMilestone = null;
   var lastMilestoneSound = 0;
+  var lastRunScore = null;
   var best = readBest();
 
   function readBest() {
@@ -1710,6 +1739,12 @@
         tone(180, 0.32, 'square', 0.05, 160, 0.18);
         tone(420, 0.36, 'triangle', 0.055, 220, 0.38);
       }
+    },
+    victory: function () {
+      tone(520, 0.12, 'triangle', 0.05);
+      tone(780, 0.14, 'triangle', 0.055, 0, 0.10);
+      tone(1040, 0.18, 'triangle', 0.06, 0, 0.22);
+      tone(1560, 0.26, 'sine', 0.05, 0, 0.36);
     },
     start: function () {
       tone(520, 0.10, 'triangle', 0.05);
@@ -2690,6 +2725,7 @@
     cinematicTimer = 0;
     activeMilestone = null;
     lastMilestoneSound = 0;
+    lastRunScore = null;
     milestoneCinematicEl.classList.remove('show');
   }
 
@@ -2742,6 +2778,12 @@
   function winGame() {
     if (state !== 'playing') return;
     state = 'won';
+    lastRunScore = gameRules.calculateRunScore(score, elapsed, lives);
+    winBananasEl.textContent = score + ' / ' + gameRules.BANANA_GOAL;
+    winTimeEl.textContent = formatTime(elapsed);
+    winLivesEl.textContent = String(lives);
+    winRunScoreEl.textContent = String(lastRunScore.total);
+    sfx.victory();
     showScreen(winScreen);
     hud.classList.remove('on');
     warnEl.classList.remove('show');
@@ -2821,6 +2863,20 @@
     getScore: function () { return score; },
     getLives: function () { return lives; },
     getElapsed: function () { return elapsed; },
+    getVictorySummary: function () {
+      if (!lastRunScore) return null;
+      return {
+        bananas: score,
+        time: formatTime(elapsed),
+        lives: lives,
+        score: {
+          bananaScore: lastRunScore.bananaScore,
+          lifeBonus: lastRunScore.lifeBonus,
+          timeBonus: lastRunScore.timeBonus,
+          total: lastRunScore.total
+        }
+      };
+    },
     getGoal: function () { return gameRules.BANANA_GOAL; },
     getStage: function () { return currentStage; },
     getGruForm: function () { return gru.form; },

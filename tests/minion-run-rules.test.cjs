@@ -137,3 +137,22 @@ test('El Macho transformation frames reveal and settle predictably', () => {
     glow: 0
   });
 });
+
+test('victory score rewards bananas, remaining lives, and faster times', () => {
+  assert.deepEqual(rules.calculateRunScore(20, 60, 3), {
+    bananaScore: 2000,
+    lifeBonus: 1500,
+    timeBonus: 1500,
+    total: 5000
+  });
+  assert.deepEqual(rules.calculateRunScore(20, 120, 1), {
+    bananaScore: 2000,
+    lifeBonus: 500,
+    timeBonus: 0,
+    total: 2500
+  });
+  assert.ok(
+    rules.calculateRunScore(20, 30, 3).total >
+    rules.calculateRunScore(20, 60, 3).total
+  );
+});

@@ -118,6 +118,21 @@
     };
   }
 
+  function calculateRunScore(collectedBananas, elapsedSeconds, remainingLives) {
+    var bananas = Math.max(0, Math.floor(collectedBananas));
+    var seconds = Math.max(0, Math.floor(elapsedSeconds));
+    var lives = Math.max(0, Math.floor(remainingLives));
+    var bananaScore = bananas * 100;
+    var lifeBonus = lives * 500;
+    var timeBonus = Math.max(0, 3000 - seconds * 25);
+    return {
+      bananaScore: bananaScore,
+      lifeBonus: lifeBonus,
+      timeBonus: timeBonus,
+      total: bananaScore + lifeBonus + timeBonus
+    };
+  }
+
   return {
     BANANA_GOAL: BANANA_GOAL,
     MILESTONES: MILESTONES.slice(),
@@ -140,6 +155,7 @@
     powerEffect: powerEffect,
     milestonePresentation: milestonePresentation,
     visualEffectDuration: visualEffectDuration,
-    elMachoTransformFrame: elMachoTransformFrame
+    elMachoTransformFrame: elMachoTransformFrame,
+    calculateRunScore: calculateRunScore
   };
 });
