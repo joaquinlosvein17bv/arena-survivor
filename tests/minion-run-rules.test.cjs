@@ -62,3 +62,19 @@ test('golden bananas award one deterministic gadget charge', () => {
   assert.equal(rules.powerForRoll(0.67), 'tentacle');
   assert.deepEqual(rules.createPowerPickup('freeze'), { type: 'freeze', charges: 1 });
 });
+
+test('the freeze ray has a forward range and a timed freeze', () => {
+  assert.deepEqual(rules.powerEffect('freeze'), {
+    range: 34,
+    coneDot: 0.45,
+    duration: 4
+  });
+});
+
+test('the fart gun defines a close push and confusion cloud', () => {
+  assert.deepEqual(rules.powerEffect('fart'), {
+    radius: 14,
+    push: 10,
+    duration: 3
+  });
+});

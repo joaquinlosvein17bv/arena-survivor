@@ -17,6 +17,10 @@
   var MILESTONES = [5, 10, 15];
   var PROGRESS_MARKERS = [5, 10, 15, 20];
   var POWER_TYPES = ['freeze', 'fart', 'tentacle'];
+  var POWER_EFFECTS = {
+    freeze: { range: 34, coneDot: 0.45, duration: 4 },
+    fart: { radius: 14, push: 10, duration: 3 }
+  };
   var GRU_BASE_SPEED = 4.2;
   var GRU_ANGRY_SPEED = 5.0;
   var EL_MACHO_SPEED = 6.2;
@@ -69,6 +73,12 @@
     return { type: type, charges: 1 };
   }
 
+  function powerEffect(type) {
+    var effect = POWER_EFFECTS[type];
+    if (!effect) throw new Error('Unknown Minion Run power effect: ' + type);
+    return Object.assign({}, effect);
+  }
+
   return {
     BANANA_GOAL: BANANA_GOAL,
     MILESTONES: MILESTONES.slice(),
@@ -86,6 +96,7 @@
     gruFormForScore: gruFormForScore,
     progressPercent: progressPercent,
     powerForRoll: powerForRoll,
-    createPowerPickup: createPowerPickup
+    createPowerPickup: createPowerPickup,
+    powerEffect: powerEffect
   };
 });

@@ -851,6 +851,7 @@
   var particleMatA = new THREE.MeshBasicMaterial({ color: 0xffe14d });
   var particleMatB = new THREE.MeshBasicMaterial({ color: 0xffb300 });
   var particles = [];
+  var powerVisuals = [];
 
   function burst(pos, golden) {
     var mat = golden ? particleMatB : particleMatA;
@@ -1289,6 +1290,7 @@
     speed: 4.2,
     bob: 0,
     stun: 0,
+    confused: 0,
     form: 'gru',
     machoGroup: null
   };
@@ -1610,6 +1612,10 @@
       tone(1200, 0.12, 'sine', 0.04, -400);
       tone(700, 0.20, 'sine', 0.04, -200, 0.10);
     },
+    fart: function () {
+      tone(95, 0.34, 'sawtooth', 0.055, -38);
+      tone(72, 0.42, 'square', 0.035, -24, 0.08);
+    },
     start: function () {
       tone(520, 0.10, 'triangle', 0.05);
       tone(780, 0.10, 'triangle', 0.05, 0, 0.10);
@@ -1647,6 +1653,123 @@
     updatePowerHud();
     toast(powerNameEl.textContent + ' READY');
   }
+
+  function pursuerTargets() {
+    var targets = [{ root: gru.root, actor: gru }];
+    for (var i = 0; i < purpleMinions.length; i++) {
+      targets.push({ root: purpleMinions[i].root, actor: purpleMinions[i] });
+    }
+    return targets;
+  }
+
+  function targetInFront(root, range, minimumDot) {
+    var dx = root.position.x - player.root.position.x;
+    var dz = root.position.z - player.root.position.z;
+    var distance = Math.hypot(dx, dz);
+    if (distance > range || distance < 0.001) return false;
+    var forwardX = Math.sin(player.rot);
+    var forwardZ = Math.cos(player.rot);
+    var dot = (dx / distance) * forwardX + (dz / distance) * forwardZ;
+    return dot >= minimumDot;
+  }
+
+  function spawnFreezeBeam(range) {
+    var material = new THREE.MeshBasicMaterial({
+      color: 0x70d6ff,
+      transparent: true,
+      opacity: 0.72,
+      depthWrite: false
+    });
+    var beam = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, range), material);
+    var forwardX = Math.sin(player.rot);
+    var forwardZ = Math.cos(player.rot);
+    beam.position.set(
+      player.root.position.x + forwardX * range * 0.5,
+      player.root.position.y + 1.25,
+      player.root.position.z + forwardZ * range * 0.5
+    );
+    beam.rotation.y = player.rot;
+    scene.add(beam);
+    powerVisuals.push({ mesh: beam, life: 0.34, maxLife: 0.34, kind: 'beam' });
+  }
+
+  function spawnFartCloud(radius) {
+    var material = new THREE.MeshBasicMaterial({
+      color: 0x80d93d,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    var cloud = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), material);
+    cloud.position.copy(player.root.position);
+    cloud.position.y += 1.0;
+    cloud.scale.setScalar(1.4);
+    scene.add(cloud);
+    powerVisuals.push({
+      mesh: cloud,
+      life: 0.72,
+      maxLife: 0.72,
+      kind: 'cloud',
+      radius: radius
+    });
+  }
+
+  function useFreezeRay() {
+    var effect = gameRules.powerEffect('freeze');
+    var targets = pursuerTargets();
+    for (var i = 0; i < targets.length; i++) {
+      var target = targets[i];
+      if (targetInFront(target.root, effect.range, effect.coneDot)) {
+        target.actor.stun = Math.max(target.actor.stun || 0, effect.duration);
+      }
+    }
+    spawnFreezeBeam(effect.range);
+    sfx.freeze();
+    toast('FREEZE RAY FIRED');
+    return true;
+  }
+
+  function useFartGun() {
+    var effect = gameRules.powerEffect('fart');
+    var targets = pursuerTargets();
+    for (var i = 0; i < targets.length; i++) {
+      var target = targets[i];
+      var dx = target.root.position.x - player.root.position.x;
+      var dz = target.root.position.z - player.root.position.z;
+      var distance = Math.hypot(dx, dz);
+      if (distance > effect.radius) continue;
+      if (distance < 0.001) {
+        dx = Math.sin(player.rot);
+        dz = Math.cos(player.rot);
+        distance = 1;
+      }
+      target.root.position.x += (dx / distance) * effect.push;
+      target.root.position.z += (dz / distance) * effect.push;
+      target.actor.confused = Math.max(target.actor.confused || 0, effect.duration);
+      resolveObstacles(target.root.position, target.actor === gru ? 0.72 : 0.48);
+      clampToWorld(target.root.position);
+    }
+    spawnFartCloud(effect.radius);
+    sfx.fart();
+    toast('FART GUN CLOUD');
+    return true;
+  }
+
+  function activateHeldPower() {
+    if (state !== 'playing' || !heldPower || heldPower.charges <= 0) return false;
+
+    var used = false;
+    if (heldPower.type === 'freeze') used = useFreezeRay();
+    else if (heldPower.type === 'fart') used = useFartGun();
+
+    if (!used) return false;
+    heldPower.charges -= 1;
+    if (heldPower.charges <= 0) heldPower = null;
+    updatePowerHud();
+    return true;
+  }
+
   function updateLivesHud() {
     var out = '';
     for (var i = 0; i < 3; i++) out += i < lives ? '\u2764\uFE0F' : '\uD83D\uDDA4';
@@ -1880,6 +2003,8 @@
      Gru update
   ============================================================ */
   function updateGru(dt) {
+    if (gru.confused > 0) gru.confused -= dt;
+
     var dx = player.root.position.x - gru.root.position.x;
     var dz = player.root.position.z - gru.root.position.z;
     var dist = Math.hypot(dx, dz);
@@ -1896,7 +2021,8 @@
     } else {
       gru.coatMat.emissiveIntensity = 0;
 
-      gru.speed = damp(gru.speed, gameRules.gruSpeedForScore(score), 3.2, dt);
+      var gruTargetSpeed = gameRules.gruSpeedForScore(score) * (gru.confused > 0 ? 0.35 : 1);
+      gru.speed = damp(gru.speed, gruTargetSpeed, 3.2, dt);
 
       if (dist > 0.001) {
         var dirX = dx / dist;
@@ -2105,6 +2231,37 @@
     }
   }
 
+  function updatePowerVisuals(dt) {
+    for (var i = powerVisuals.length - 1; i >= 0; i--) {
+      var visual = powerVisuals[i];
+      visual.life -= dt;
+      if (visual.life <= 0) {
+        scene.remove(visual.mesh);
+        visual.mesh.geometry.dispose();
+        visual.mesh.material.dispose();
+        powerVisuals.splice(i, 1);
+        continue;
+      }
+
+      var progress = 1 - visual.life / visual.maxLife;
+      visual.mesh.material.opacity = (1 - progress) * (visual.kind === 'beam' ? 0.72 : 0.34);
+      if (visual.kind === 'cloud') {
+        visual.mesh.scale.setScalar(1.4 + progress * visual.radius);
+      } else {
+        visual.mesh.scale.y = 1 + progress * 3;
+      }
+    }
+  }
+
+  function clearPowerVisuals() {
+    for (var i = 0; i < powerVisuals.length; i++) {
+      scene.remove(powerVisuals[i].mesh);
+      powerVisuals[i].mesh.geometry.dispose();
+      powerVisuals[i].mesh.material.dispose();
+    }
+    powerVisuals.length = 0;
+  }
+
   function updateClouds(dt) {
     for (var i = 0; i < clouds.length; i++) {
       var c = clouds[i];
@@ -2217,6 +2374,7 @@
     heldPower = null;
     playerSlow = 0;
     clearPurpleMinions();
+    clearPowerVisuals();
     lives = 3;
     elapsed = 0;
     stamina = 100;
@@ -2238,6 +2396,7 @@
     gru.root.rotation.y = 0;
     gru.speed = GRU_BASE;
     gru.stun = 0;
+    gru.confused = 0;
     gru.coatMat.emissive.setHex(0x000000);
     gru.coatMat.emissiveIntensity = 0;
     gru.alert.material.opacity = 0;
@@ -2370,6 +2529,7 @@
     }
 
     updateParticles(dt);
+    updatePowerVisuals(dt);
     updateClouds(dt);
     updateCamera(dt);
     drawRadar();
@@ -2398,7 +2558,9 @@
     getHeldPower: function () {
       return heldPower ? { type: heldPower.type, charges: heldPower.charges } : null;
     },
+    getPowerVisualCount: function () { return powerVisuals.length; },
     grantPower: grantPower,
+    activatePower: activateHeldPower,
     getTriggeredMilestones: function () { return triggeredMilestones.slice(); },
     setScore: function (v) {
       var previousScore = score;
