@@ -1079,14 +1079,15 @@
   /* ============================================================
      Game state
   ============================================================ */
-  var GRU_BASE = 4.2;
-  var GRU_MAX = 9.2;
+  var GRU_BASE = gameRules.GRU_BASE_SPEED;
   var PLAYER_WALK = 6.1;
   var PLAYER_SPRINT = 10.2;
   var CATCH_RADIUS = 2.15;
 
   var state = 'menu';
   var score = 0;
+  var currentStage = 0;
+  var triggeredMilestones = [];
   var lives = 3;
   var elapsed = 0;
   var stamina = 100;
@@ -1598,7 +1599,7 @@
     } else {
       gru.coatMat.emissiveIntensity = 0;
 
-      gru.speed = Math.min(GRU_MAX, gru.speed + dt * 0.052);
+      gru.speed = damp(gru.speed, gameRules.gruSpeedForScore(score), 3.2, dt);
 
       if (dist > 0.001) {
         var dirX = dx / dist;
@@ -1706,6 +1707,8 @@
   }
 
   function collectBanana(b) {
+    var previousScore = score;
+
     b.active = false;
     b.mesh.visible = false;
     b.ring.visible = false;
@@ -1714,6 +1717,7 @@
     burst(b.mesh.position, b.golden);
 
     score += 1;
+    processMilestones(previousScore, score);
 
     if (b.golden) {
       gru.stun = 5.0;
@@ -1732,6 +1736,21 @@
 
     if (gameRules.hasWon(score)) {
       winGame();
+    }
+  }
+
+  function processMilestones(previousScore, currentScore) {
+    var crossed = gameRules.crossedMilestones(previousScore, currentScore);
+    currentStage = gameRules.stageForScore(currentScore);
+
+    for (var i = 0; i < crossed.length; i++) {
+      var milestone = crossed[i];
+      if (triggeredMilestones.includes(milestone)) continue;
+      triggeredMilestones.push(milestone);
+
+      if (milestone === 5) toast('5 BANANAS! GRU IS FASTER');
+      else if (milestone === 10) toast('10 BANANAS! THE CHASE IS ESCALATING');
+      else if (milestone === 15) toast('15 BANANAS! FINAL PHASE');
     }
   }
 
@@ -1882,6 +1901,8 @@
   ============================================================ */
   function resetGame() {
     score = 0;
+    currentStage = 0;
+    triggeredMilestones.length = 0;
     lives = 3;
     elapsed = 0;
     stamina = 100;
@@ -2052,7 +2073,14 @@
     getScore: function () { return score; },
     getLives: function () { return lives; },
     getGoal: function () { return gameRules.BANANA_GOAL; },
-    setScore: function (v) { score = v; updateScoreHud(); },
+    getStage: function () { return currentStage; },
+    getTriggeredMilestones: function () { return triggeredMilestones.slice(); },
+    setScore: function (v) {
+      var previousScore = score;
+      score = v;
+      processMilestones(previousScore, score);
+      updateScoreHud();
+    },
     collectBanana: collectBanana,
     setLives: function (v) { lives = v; updateLivesHud(); },
     setInvuln: function (v) { invuln = v; },

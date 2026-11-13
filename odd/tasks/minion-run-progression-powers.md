@@ -20,8 +20,8 @@ Branch: `master` (direct-main delivery explicitly requested). Delivery: `excepti
 
 ## Tasks
 
-- **T1 — Goal and victory rule** (`S1`, `S13`) — Route: inline. Status: done. Pair: 20-banana goal + victory at 20. Commit: this work-unit commit.
-- **T2 — Milestones and Gru speed** (`S2`, `S13`) — Route: inline. Status: pending. Pair: 5/10/15 phase engine + Gru speed increase. Commit: pending.
+- **T1 — Goal and victory rule** (`S1`, `S13`) — Route: inline. Status: done. Pair: 20-banana goal + victory at 20. Commit: `44f532d`.
+- **T2 — Milestones and Gru speed** (`S2`, `S13`) — Route: inline. Status: done. Pair: 5/10/15 phase engine + Gru speed increase. Commit: this work-unit commit.
 - **T3 — Purple minions and El Macho** (`S3`, `S13`) — Route: inline. Status: pending. Pair: purple pursuers + El Macho transformation. Commit: pending.
 - **T4 — Progress HUD and golden powers** (`S4`, `S5`, `S13`) — Route: inline. Status: pending. Pair crosses G01/G02: progress HUD + golden banana power pickup. Commit: pending.
 - **T5 — Freeze ray and fart gun** (`S6`, `S7`, `S13`) — Route: inline. Status: pending. Pair: freeze ray + fart gun. Commit: pending.
@@ -37,3 +37,4 @@ Branch: `master` (direct-main delivery explicitly requested). Delivery: `excepti
 - **L3 — 2026-07-01, remote authorization:** Push each completed work unit to the repository's primary branch (`master`) on `origin`, using the active GitHub CLI credential session authorized by the user.
 - **L4 — Planning:** The accepted brainstorm is implemented as nine ordered work units: eight two-item commits and one final single-item commit. The user-facing artifact remains one game; commit boundaries are delivery checkpoints, not separate products.
 - **L5 — T1 evidence:** RED: `node --test tests/minion-run-rules.test.cjs` failed because `game-rules.js` did not exist. GREEN: 2/2 rule tests passed; inline game script syntax passed; Playwright changed score from 19 to 20 and observed `{ state: "won", goal: 20, winVisible: true }`. Risk: none; this adds isolated game behavior and does not change a consumed public contract.
+- **L6 — T2 evidence:** RED: three new tests failed because milestone and speed APIs were absent. GREEN: 5/5 rule tests passed; Playwright crossed 5 once while collecting two bananas and observed `{ score: 6, stage: 1, milestones: [5], gruSpeed: 4.87 }`. Existing 20-banana victory tests remained green. Risk: none; milestone state is isolated to Minion Run and preserves existing controls.
